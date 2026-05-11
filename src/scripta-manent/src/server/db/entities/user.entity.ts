@@ -20,6 +20,14 @@ export class UserEntity {
   @Column({ type: 'text', nullable: true })
   image!: string | null;
 
+  /**
+   * Password hash (bcrypt).
+   * select:false → non inclusa nelle query ordinarie.
+   * Selezionare esplicitamente con .addSelect('user.passwordHash') solo in authorize().
+   */
+  @Column({ name: 'password_hash', type: 'text', nullable: true, select: false })
+  passwordHash!: string | null;
+
   @OneToMany('BookEntity', (book: BookEntity) => book.user, { eager: false })
   books!: BookEntity[];
 

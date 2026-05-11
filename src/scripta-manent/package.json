@@ -15,6 +15,7 @@
     "db:schema:log": "npm run typeorm -- schema:log",
     "db:schema:drop": "npm run typeorm -- schema:drop",
     "db:query": "npm run typeorm -- query",
+    "seed:user": "node --require ./node_modules/tsx/dist/cjs/index.cjs src/scripts/seed-user.ts",
     "prepare": "husky"
   },
   "lint-staged": {

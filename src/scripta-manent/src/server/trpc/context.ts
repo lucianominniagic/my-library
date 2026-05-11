@@ -1,11 +1,17 @@
+import { auth } from '@/auth';
+import { getDataSource } from '@/server/db/data-source';
 import { type DataSource } from 'typeorm';
+import { type Session } from 'next-auth';
 
 export interface Context {
-  db?: DataSource;
+  db: DataSource;
+  session: Session | null;
 }
 
 export async function createContext(): Promise<Context> {
-  // DataSource viene iniettato lazily nelle procedure che ne hanno bisogno
-  // per evitare connessioni inutili nelle route pubbliche
-  return {};
+  const [ds, session] = await Promise.all([
+    getDataSource(),
+    auth(),
+  ]);
+  return { db: ds, session };
 }

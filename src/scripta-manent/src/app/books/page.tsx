@@ -1,8 +1,14 @@
+import { Box, Typography } from '@mui/material';
+
 export default function BooksPage() {
   return (
-    <main>
-      <h1>Books</h1>
-      <p>Catalogo libri — pagina placeholder (Fase 1)</p>
-    </main>
+    <Box sx={{ p: 4 }}>
+      <Typography variant="h4" color="primary.main">
+        📚 Libreria
+      </Typography>
+      <Typography color="text.secondary" sx={{ mt: 1 }}>
+        La lista dei tuoi libri apparirà qui (Fase 5)
+      </Typography>
+    </Box>
   );
 }
