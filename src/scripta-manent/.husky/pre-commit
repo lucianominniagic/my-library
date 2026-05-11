@@ -1,0 +1,22 @@
+#!/usr/bin/env sh
+# Husky pre-commit hook
+# 1. Blocca commit se trova .env.local o altri file .env reali staged
+# 2. Esegue lint-staged
+
+# ── Secret detection ────────────────────────────────────────────────────────
+# Controlla se file .env (escluso .env.example) sono in staging area
+STAGED_ENV=$(git diff --cached --name-only | grep -E '\.env' | grep -v '\.env\.example' || true)
+
+if [ -n "$STAGED_ENV" ]; then
+  echo ""
+  echo "❌ ERRORE: Stai per committare un file .env con credenziali reali!"
+  echo "   File staged: $STAGED_ENV"
+  echo ""
+  echo "   Soluzione: rimuovi il file dal commit con:"
+  echo "   git reset HEAD $STAGED_ENV"
+  echo ""
+  exit 1
+fi
+
+# ── lint-staged ──────────────────────────────────────────────────────────────
+npx lint-staged
