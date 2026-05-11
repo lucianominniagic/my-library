@@ -1,8 +1,7 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure } from '../init';
-import { TagEntity } from '@/server/db/entities/tag.entity';
-import { BookEntity } from '@/server/db/entities/book.entity';
+import { TagEntity, BookEntity } from '@/server/db/entities';
 import { TagCreateSchema, TagAttachSchema } from '../schemas/tag.schema';
 
 // ─────────────────────────── helpers ────────────────────────────────────────

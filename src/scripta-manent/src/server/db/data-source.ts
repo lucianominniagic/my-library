@@ -1,18 +1,26 @@
 import 'reflect-metadata';
 import * as dotenv from 'dotenv';
-import { DataSource, type DataSourceOptions } from 'typeorm';
+import { DataSource } from 'typeorm';
 
 // Carica .env.local per la TypeORM CLI (Next.js lo carica autonomamente a runtime)
 dotenv.config({ path: '.env.local', override: false });
-import { UserEntity } from './entities/user.entity';
-import { AccountEntity } from './entities/account.entity';
-import { SessionEntity } from './entities/session.entity';
-import { VerificationTokenEntity } from './entities/verification-token.entity';
-import { AuthorEntity } from './entities/author.entity';
-import { GenreEntity } from './entities/genre.entity';
-import { TagEntity } from './entities/tag.entity';
-import { BookAuthorEntity } from './entities/book-author.entity';
-import { BookEntity } from './entities/book.entity';
+
+// Importa tutte le entities dal barrel — stesso path usato dai router (@/server/db/entities)
+// Questo garantisce che Turbopack/Node.js usi la STESSA istanza delle classi entity
+// sia qui che nei router, evitando EntityMetadataNotFoundError.
+import {
+  UserEntity,
+  AccountEntity,
+  SessionEntity,
+  VerificationTokenEntity,
+  AuthorEntity,
+  GenreEntity,
+  TagEntity,
+  BookAuthorEntity,
+  BookGenreEntity,
+  BookTagEntity,
+  BookEntity,
+} from '@/server/db/entities';
 
 // Migrazioni importate esplicitamente — evita il glob `*.ts` che Turbopack
 // non riesce a risolvere staticamente (expression too dynamic).
@@ -29,39 +37,43 @@ const entities = [
   GenreEntity,
   TagEntity,
   BookAuthorEntity,
+  BookGenreEntity,
+  BookTagEntity,
   BookEntity,
 ];
 
 const migrations = [InitialSchema1710000000001, SeedGenres1710000000002, AddPasswordHash1710000000003];
 
-const baseOptions: DataSourceOptions = {
+/**
+ * AppDataSource — singleton module-level.
+ * Usato sia dalla CLI TypeORM (con migrations) che dal runtime Next.js.
+ * Il pattern module-level garantisce che le entity class references siano
+ * le stesse usate dai router, prevenendo EntityMetadataNotFoundError.
+ */
+export const AppDataSource = new DataSource({
   type:        'postgres',
-  url:         process.env.DATABASE_URL,
-  synchronize: false, // MAI true — usare solo migrations
+  host:        process.env.DB_HOST     ?? 'localhost',
+  port:        Number(process.env.DB_PORT ?? 5432),
+  username:    process.env.DB_USER,
+  password:    process.env.DB_PASSWORD,
+  database:    process.env.DB_NAME,
+  synchronize: false,
   logging:     process.env.NODE_ENV === 'development',
   entities,
-};
+  migrations,
+});
 
 /**
- * Singleton DataSource exported for the TypeORM CLI.
- * Include le migrations — utilizzata solo da `npm run typeorm`.
+ * Inizializza la connessione al DB (lazy, idempotente).
+ * Usato da createContext() tRPC e da qualsiasi server-side code.
  */
-export const AppDataSource = new DataSource({ ...baseOptions, migrations });
-
-declare global {
-  // eslint-disable-next-line no-var
-  var __dataSource: DataSource | undefined;
+export async function initializeDBConnection(): Promise<DataSource> {
+  if (!AppDataSource.isInitialized) {
+    await AppDataSource.initialize();
+  }
+  return AppDataSource;
 }
 
-/**
- * DataSource per il runtime Next.js.
- * NON include le migrations: le migration vengono eseguite solo dalla CLI.
- */
-export async function getDataSource(): Promise<DataSource> {
-  if (global.__dataSource?.isInitialized) return global.__dataSource;
-  const ds = new DataSource(baseOptions);
-  await ds.initialize();
-  if (process.env.NODE_ENV !== 'production') global.__dataSource = ds;
-  return ds;
-}
+/** @deprecated Usa initializeDBConnection() */
+export const getDataSource = initializeDBConnection;
 

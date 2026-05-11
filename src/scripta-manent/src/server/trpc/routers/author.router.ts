@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { ILike } from 'typeorm';
 import { router, protectedProcedure } from '../init';
-import { AuthorEntity } from '@/server/db/entities/author.entity';
+import { AuthorEntity } from '@/server/db/entities';
 import { AuthorCreateSchema, AuthorSearchSchema } from '../schemas/author.schema';
 
 export const authorRouter = router({

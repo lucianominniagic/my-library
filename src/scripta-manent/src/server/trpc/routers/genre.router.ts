@@ -1,5 +1,5 @@
 import { router, publicProcedure } from '../init';
-import { GenreEntity } from '@/server/db/entities/genre.entity';
+import { GenreEntity } from '@/server/db/entities';
 
 export const genreRouter = router({
   list: publicProcedure.query(async ({ ctx }) => {
