@@ -40,7 +40,7 @@
 | **1** | Data Layer | Shakespeare | 0 | Migrations, seed genres, entities TypeORM, `db:migrate` verde | ✅ **COMPLETATA** |
 | **2** | Auth | McCarthy + Ishiguro | 1 | Login page, CredentialsProvider, middleware protezione rotte | ✅ **COMPLETATA** |
 | **3** | Core Backend | McCarthy | 2 | tRPC CRUD: book / author / genre / tag — testabili via Postman/client | ✅ **COMPLETATA** |
-| **4** | CSV Import | McCarthy | 3 | `tsx scripts/import-csv.ts` — libreria di Luciano nel DB | ⏳ |
+| **4** | CSV Import | McCarthy | 3 | `tsx scripts/import-csv.ts` — libreria di Luciano nel DB | ✅ **COMPLETATA** |
 | **5** | Frontend Core | Ishiguro | 3 | Lista libri, form aggiunta/modifica, dettaglio — **app usabile end-to-end** ⭐ | ⏳ |
 | **6** | Search & Filters | McCarthy + Ishiguro | 5 | pg_trgm search, filtri per genere/tag/stato, URL params | ⏳ |
 | **7** | Cover Integration | McCarthy + Ishiguro | 5 | Google Books API, cover in lista e dettaglio | ⏳ |
