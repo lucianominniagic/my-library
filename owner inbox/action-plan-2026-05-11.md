@@ -36,15 +36,15 @@
 
 | Fase | Titolo | Lead | Dipende da | Deliverable |
 |---|---|---|---|---|
-| **0** | Foundation | Pasolini | — | Repo, Docker Compose (PG), DataSource singleton, tRPC init, CI base |
-| **1** | Data Layer | Shakespeare | 0 | Migrations, seed genres, entities TypeORM, `db:migrate` verde |
-| **2** | Auth | McCarthy + Ishiguro | 1 | Login page, CredentialsProvider, middleware protezione rotte |
-| **3** | Core Backend | McCarthy | 2 | tRPC CRUD: book / author / genre / tag — testabili via Postman/client |
-| **4** | CSV Import | McCarthy | 3 | `tsx scripts/import-csv.ts` — libreria di Luciano nel DB |
-| **5** | Frontend Core | Ishiguro | 3 | Lista libri, form aggiunta/modifica, dettaglio — **app usabile end-to-end** ⭐ |
-| **6** | Search & Filters | McCarthy + Ishiguro | 5 | pg_trgm search, filtri per genere/tag/stato, URL params |
-| **7** | Cover Integration | McCarthy + Ishiguro | 5 | Google Books API, cover in lista e dettaglio |
-| **8** | Polish | Ishiguro | 6+7 | Tag Manager, dark mode, skeleton loading, export CSV/JSON |
+| **0** | Foundation | Pasolini | — | Repo, Docker Compose (PG), DataSource singleton, tRPC init, CI base | ✅ **COMPLETATA** |
+| **1** | Data Layer | Shakespeare | 0 | Migrations, seed genres, entities TypeORM, `db:migrate` verde | ✅ **COMPLETATA** |
+| **2** | Auth | McCarthy + Ishiguro | 1 | Login page, CredentialsProvider, middleware protezione rotte | ✅ **COMPLETATA** |
+| **3** | Core Backend | McCarthy | 2 | tRPC CRUD: book / author / genre / tag — testabili via Postman/client | ✅ **COMPLETATA** |
+| **4** | CSV Import | McCarthy | 3 | `tsx scripts/import-csv.ts` — libreria di Luciano nel DB | ⏳ |
+| **5** | Frontend Core | Ishiguro | 3 | Lista libri, form aggiunta/modifica, dettaglio — **app usabile end-to-end** ⭐ | ⏳ |
+| **6** | Search & Filters | McCarthy + Ishiguro | 5 | pg_trgm search, filtri per genere/tag/stato, URL params | ⏳ |
+| **7** | Cover Integration | McCarthy + Ishiguro | 5 | Google Books API, cover in lista e dettaglio | ⏳ |
+| **8** | Polish | Ishiguro | 6+7 | Tag Manager, dark mode, skeleton loading, export CSV/JSON | ⏳ |
 
 **Primo deliverable usabile (thin vertical slice):** fine Fase 5
 
@@ -75,6 +75,26 @@
 |---|---|---|
 | R04 | Dati CSV sporchi non gestiti | Zod schema CSV definito prima dello script; report errori per riga |
 | R19 | Import bloccato se Google Books API down | Flag `--no-covers` rende import indipendente |
+
+---
+
+## Note tecniche — Fase 3
+
+**Fix applicati da McCarthy durante l'implementazione:**
+
+- **Circular dep Turbopack** (`book.entity.ts` ↔ `book-author.entity.ts`): risolto con `import type` + decorator string-based
+- **`ctx.session.user` type narrowing** in `protectedProcedure`: aggiunto tipo `AuthenticatedSession` in `init.ts`
+- **Migration glob dinamico** incompatibile con Turbopack: migration importate staticamente in `AppDataSource` CLI, non nel runtime `getDataSource()`
+
+**File aggiunti:**
+- `src/server/trpc/schemas/` → `book.schema.ts`, `author.schema.ts`, `tag.schema.ts`
+- `src/server/trpc/dto/book.dto.ts`
+- `src/server/trpc/routers/` → `book.router.ts`, `author.router.ts`, `genre.router.ts`, `tag.router.ts`
+
+**Endpoint verificati:**
+- `GET /api/trpc/health.ping` → `"pong"` ✅
+- `GET /api/trpc/genre.list` → 18 generi ✅
+- `npx tsc --noEmit` → zero errori ✅
 
 ---
 
