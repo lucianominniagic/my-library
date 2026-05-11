@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { ThemeProvider } from '@/lib/theme-provider';
 import { TRPCProvider } from '@/lib/trpc/provider';
+import { AuthProvider } from '@/lib/auth-provider';
+import { AppShell } from '@/components/layout/AppShell';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -14,7 +16,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ThemeProvider>
           <TRPCProvider>
-            {children}
+            <AuthProvider>
+              <AppShell>{children}</AppShell>
+            </AuthProvider>
           </TRPCProvider>
         </ThemeProvider>
       </body>

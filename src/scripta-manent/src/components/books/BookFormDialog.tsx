@@ -1,0 +1,587 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Alert,
+  Autocomplete,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  FormControl,
+  FormHelperText,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { trpc } from '@/lib/trpc/client';
+import { type BookDetailDto, type GenreDto } from '@/server/trpc/dto/book.dto';
+import { StarRating } from './StarRating';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+type AuthorRole = 'author' | 'editor' | 'translator' | 'illustrator' | 'other';
+
+interface SelectedAuthor {
+  authorId: string;
+  name: string;
+  nationality: string | null;
+  role: AuthorRole;
+  sortOrder: number;
+}
+
+interface FormErrors {
+  title?: string;
+  authors?: string;
+  yearRead?: string;
+  coverUrl?: string;
+}
+
+interface BookFormDialogProps {
+  open: boolean;
+  onClose: () => void;
+  book?: BookDetailDto;
+}
+
+const ROLE_LABELS: Record<AuthorRole, string> = {
+  author: 'Autore',
+  editor: 'Curatore',
+  translator: 'Traduttore',
+  illustrator: 'Illustratore',
+  other: 'Altro',
+};
+
+const LANGUAGE_OPTIONS = [
+  { value: 'it', label: 'Italiano' },
+  { value: 'en', label: 'Inglese' },
+  { value: 'fr', label: 'Francese' },
+  { value: 'de', label: 'Tedesco' },
+  { value: 'es', label: 'Spagnolo' },
+  { value: 'pt', label: 'Portoghese' },
+  { value: 'ru', label: 'Russo' },
+  { value: 'ja', label: 'Giapponese' },
+  { value: 'zh', label: 'Cinese' },
+  { value: 'ar', label: 'Arabo' },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Component
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
+  const utils = trpc.useUtils();
+  const isEdit = book != null;
+
+  // ── Form state ──────────────────────────────────────────────────────────────
+  const [title, setTitle] = useState('');
+  const [subtitle, setSubtitle] = useState('');
+  const [yearRead, setYearRead] = useState('');
+  const [rating, setRating] = useState<number | null>(null);
+  const [notes, setNotes] = useState('');
+  const [selectedAuthors, setSelectedAuthors] = useState<SelectedAuthor[]>([]);
+  const [selectedGenres, setSelectedGenres] = useState<GenreDto[]>([]);
+  // Advanced
+  const [isbn, setIsbn] = useState('');
+  const [publisher, setPublisher] = useState('');
+  const [publishedYear, setPublishedYear] = useState('');
+  const [language, setLanguage] = useState('it');
+  const [pages, setPages] = useState('');
+  const [description, setDescription] = useState('');
+  const [coverUrl, setCoverUrl] = useState('');
+
+  // ── Author search state ──────────────────────────────────────────────────────
+  const [authorInput, setAuthorInput] = useState('');
+  const [debouncedAuthorInput, setDebouncedAuthorInput] = useState('');
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedAuthorInput(authorInput), 300);
+    return () => clearTimeout(t);
+  }, [authorInput]);
+
+  const { data: authorResults, isFetching: authorsFetching } = trpc.author.search.useQuery(
+    { q: debouncedAuthorInput, limit: 10 },
+    { enabled: debouncedAuthorInput.trim().length >= 1 },
+  );
+
+  // ── Genre options ─────────────────────────────────────────────────────────
+  const { data: genreOptions = [] } = trpc.genre.list.useQuery();
+
+  // ── Mutations ────────────────────────────────────────────────────────────────
+  const createMutation = trpc.book.create.useMutation({
+    onSuccess: async () => {
+      await utils.book.list.invalidate();
+      onClose();
+    },
+  });
+
+  const updateMutation = trpc.book.update.useMutation({
+    onSuccess: async (data) => {
+      await utils.book.list.invalidate();
+      await utils.book.byId.invalidate({ id: data.id });
+      onClose();
+    },
+  });
+
+  const createAuthorMutation = trpc.author.create.useMutation();
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
+  const mutationError = createMutation.error?.message ?? updateMutation.error?.message;
+
+  // ── Errors ────────────────────────────────────────────────────────────────────
+  const [errors, setErrors] = useState<FormErrors>({});
+
+  // ── Pre-fill form when editing ────────────────────────────────────────────────
+  useEffect(() => {
+    if (open && book) {
+      setTitle(book.title);
+      setSubtitle(book.subtitle ?? '');
+      setYearRead(book.yearRead != null ? String(book.yearRead) : '');
+      setRating(book.rating);
+      setNotes(book.notes ?? '');
+      setIsbn(book.isbn ?? '');
+      setPublisher(book.publisher ?? '');
+      setPublishedYear(book.publishedYear != null ? String(book.publishedYear) : '');
+      setLanguage(book.language ?? 'it');
+      setPages(book.pages != null ? String(book.pages) : '');
+      setDescription(book.description ?? '');
+      setCoverUrl(book.coverUrl ?? '');
+      setSelectedAuthors(
+        book.authors.map((a) => ({
+          authorId: a.id,
+          name: a.name,
+          nationality: a.nationality,
+          role: a.role as AuthorRole,
+          sortOrder: a.sortOrder,
+        })),
+      );
+      setSelectedGenres(book.genres);
+    } else if (open && !book) {
+      // Reset for create
+      setTitle('');
+      setSubtitle('');
+      setYearRead('');
+      setRating(null);
+      setNotes('');
+      setIsbn('');
+      setPublisher('');
+      setPublishedYear('');
+      setLanguage('it');
+      setPages('');
+      setDescription('');
+      setCoverUrl('');
+      setSelectedAuthors([]);
+      setSelectedGenres([]);
+    }
+    setErrors({});
+    setAuthorInput('');
+    setDebouncedAuthorInput('');
+  }, [open, book]);
+
+  // ── Validation ────────────────────────────────────────────────────────────────
+  function validate(): boolean {
+    const newErrors: FormErrors = {};
+
+    if (!title.trim()) {
+      newErrors.title = 'Il titolo è obbligatorio';
+    }
+    if (selectedAuthors.length === 0) {
+      newErrors.authors = 'Almeno un autore è richiesto';
+    }
+    if (yearRead.trim()) {
+      const yr = Number(yearRead);
+      if (!Number.isInteger(yr) || yr < 1800 || yr > 2200) {
+        newErrors.yearRead = 'Anno non valido (1800–2200)';
+      }
+    }
+    if (coverUrl.trim()) {
+      try {
+        new URL(coverUrl.trim());
+      } catch {
+        newErrors.coverUrl = 'URL non valido';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }
+
+  // ── Submit ────────────────────────────────────────────────────────────────────
+  async function handleSubmit() {
+    if (!validate()) return;
+
+    const yearReadNum = yearRead.trim() ? Number(yearRead) : undefined;
+    const payload = {
+      title: title.trim(),
+      subtitle: subtitle.trim() || undefined,
+      isbn: isbn.trim() || undefined,
+      publisher: publisher.trim() || undefined,
+      publishedYear: publishedYear.trim() ? Number(publishedYear) : undefined,
+      language,
+      pages: pages.trim() ? Number(pages) : undefined,
+      description: description.trim() || undefined,
+      coverUrl: coverUrl.trim() || undefined,
+      yearRead: yearReadNum,
+      rating: yearReadNum != null && rating != null ? rating : undefined,
+      notes: notes.trim() || undefined,
+      authors: selectedAuthors.map((a, i) => ({
+        authorId: a.authorId,
+        role: a.role,
+        sortOrder: i,
+      })),
+      genreIds: selectedGenres.map((g) => g.id),
+      tagIds: [],
+    };
+
+    if (isEdit && book) {
+      updateMutation.mutate({ id: book.id, ...payload });
+    } else {
+      createMutation.mutate(payload);
+    }
+  }
+
+  // ── Author helpers ────────────────────────────────────────────────────────────
+  function addAuthor(author: { id: string; name: string; nationality: string | null }) {
+    if (selectedAuthors.some((a) => a.authorId === author.id)) return;
+    setSelectedAuthors((prev) => [
+      ...prev,
+      {
+        authorId: author.id,
+        name: author.name,
+        nationality: author.nationality,
+        role: 'author',
+        sortOrder: prev.length,
+      },
+    ]);
+    setAuthorInput('');
+    setDebouncedAuthorInput('');
+  }
+
+  async function createAndAddAuthor(name: string) {
+    try {
+      const created = await createAuthorMutation.mutateAsync({ name: name.trim() });
+      addAuthor(created);
+    } catch {
+      // Ignore: author creation error (might already exist)
+    }
+  }
+
+  function removeAuthor(authorId: string) {
+    setSelectedAuthors((prev) => prev.filter((a) => a.authorId !== authorId));
+  }
+
+  function updateAuthorRole(authorId: string, role: AuthorRole) {
+    setSelectedAuthors((prev) =>
+      prev.map((a) => (a.authorId === authorId ? { ...a, role } : a)),
+    );
+  }
+
+  const yearReadNum = yearRead.trim() ? Number(yearRead) : NaN;
+  const showRating = !isNaN(yearReadNum) && yearReadNum >= 1800 && yearReadNum <= 2200;
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────────────────────────────────────
+  return (
+    <Dialog
+      open={open}
+      onClose={isPending ? undefined : onClose}
+      fullScreen={fullScreen}
+      maxWidth="md"
+      fullWidth
+    >
+      <DialogTitle>{isEdit ? 'Modifica libro' : 'Aggiungi libro'}</DialogTitle>
+
+      <DialogContent dividers>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+
+          {/* Error alert */}
+          {mutationError && (
+            <Alert severity="error">{mutationError}</Alert>
+          )}
+
+          {/* ── Titolo ──────────────────────────────────────────────────────── */}
+          <TextField
+            label="Titolo *"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            error={!!errors.title}
+            helperText={errors.title}
+            fullWidth
+            autoFocus={!isEdit}
+          />
+
+          {/* ── Sottotitolo ──────────────────────────────────────────────────── */}
+          <TextField
+            label="Sottotitolo"
+            value={subtitle}
+            onChange={(e) => setSubtitle(e.target.value)}
+            fullWidth
+          />
+
+          {/* ── Autori ───────────────────────────────────────────────────────── */}
+          <Box>
+            <Autocomplete
+              freeSolo
+              inputValue={authorInput}
+              onInputChange={(_, value) => setAuthorInput(value)}
+              options={authorResults ?? []}
+              getOptionLabel={(opt) =>
+                typeof opt === 'string' ? opt : opt.name
+              }
+              renderOption={(props, option) => (
+                <li {...props} key={option.id}>
+                  <Box>
+                    <Typography variant="body2">{option.name}</Typography>
+                    {option.nationality && (
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                        {option.nationality}
+                      </Typography>
+                    )}
+                  </Box>
+                </li>
+              )}
+              loading={authorsFetching}
+              renderInput={({ ...params }) => (
+                <TextField
+                  {...params}
+                  label="Cerca autore"
+                  error={!!errors.authors}
+                  helperText={errors.authors ?? 'Cerca e seleziona un autore'}
+                />
+              )}
+              onChange={(_, value) => {
+                if (value && typeof value !== 'string') {
+                  addAuthor(value);
+                }
+              }}
+              noOptionsText={
+                debouncedAuthorInput.trim().length >= 1 ? (
+                  <Button
+                    size="small"
+                    onClick={() => createAndAddAuthor(debouncedAuthorInput)}
+                    disabled={createAuthorMutation.isPending}
+                  >
+                    + Crea autore &ldquo;{debouncedAuthorInput}&rdquo;
+                  </Button>
+                ) : (
+                  'Inizia a digitare…'
+                )
+              }
+            />
+
+            {/* Selected author chips */}
+            {selectedAuthors.length > 0 && (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                {selectedAuthors.map((a) => (
+                  <Box
+                    key={a.authorId}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 2,
+                      pl: 1,
+                      pr: 0.5,
+                      py: 0.25,
+                      bgcolor: 'background.paper',
+                    }}
+                  >
+                    <Typography variant="body2">{a.name}</Typography>
+                    <Select
+                      value={a.role}
+                      onChange={(e) => updateAuthorRole(a.authorId, e.target.value as AuthorRole)}
+                      size="small"
+                      variant="standard"
+                      disableUnderline
+                      sx={{ fontSize: '0.75rem', minWidth: 90, ml: 0.5 }}
+                    >
+                      {(Object.keys(ROLE_LABELS) as AuthorRole[]).map((role) => (
+                        <MenuItem key={role} value={role} sx={{ fontSize: '0.8rem' }}>
+                          {ROLE_LABELS[role]}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    <Chip
+                      size="small"
+                      label="×"
+                      onClick={() => removeAuthor(a.authorId)}
+                      sx={{ height: 20, cursor: 'pointer', '& .MuiChip-label': { px: 0.75 } }}
+                    />
+                  </Box>
+                ))}
+              </Box>
+            )}
+          </Box>
+
+          {/* ── Generi ───────────────────────────────────────────────────────── */}
+          <Autocomplete
+            multiple
+            options={genreOptions}
+            value={selectedGenres}
+            onChange={(_, value) => setSelectedGenres(value)}
+            getOptionLabel={(opt) => opt.name}
+            isOptionEqualToValue={(opt, val) => opt.id === val.id}
+            renderInput={({ ...params }) => (
+              <TextField
+                {...params}
+                label="Generi"
+              />
+            )}
+          />
+
+          {/* ── Anno lettura + Rating ─────────────────────────────────────────── */}
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <TextField
+              label="Anno lettura"
+              type="number"
+              value={yearRead}
+              onChange={(e) => {
+                setYearRead(e.target.value);
+                if (!e.target.value) setRating(null);
+              }}
+              error={!!errors.yearRead}
+              helperText={errors.yearRead ?? 'Lascia vuoto per "Da leggere"'}
+              sx={{ width: 200 }}
+              slotProps={{ htmlInput: { min: 1800, max: 2200 } }}
+            />
+
+            {showRating && (
+              <Box>
+                <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mb: 0.5 }}>
+                  Voto
+                </Typography>
+                <StarRating value={rating} size="medium" readonly={false} onChange={setRating} />
+              </Box>
+            )}
+          </Box>
+
+          {/* ── Note ─────────────────────────────────────────────────────────── */}
+          <TextField
+            label="Note"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            fullWidth
+            multiline
+            rows={3}
+          />
+
+          {/* ── Dettagli avanzati ─────────────────────────────────────────────── */}
+          <Divider />
+          <Accordion disableGutters elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                Dettagli avanzati
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  <TextField
+                    label="ISBN"
+                    value={isbn}
+                    onChange={(e) => setIsbn(e.target.value)}
+                    sx={{ flex: 1, minWidth: 150 }}
+                  />
+                  <TextField
+                    label="Editore"
+                    value={publisher}
+                    onChange={(e) => setPublisher(e.target.value)}
+                    sx={{ flex: 2, minWidth: 150 }}
+                  />
+                </Box>
+
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  <TextField
+                    label="Anno pubblicazione"
+                    type="number"
+                    value={publishedYear}
+                    onChange={(e) => setPublishedYear(e.target.value)}
+                    slotProps={{ htmlInput: { min: 0, max: 2200 } }}
+                    sx={{ width: 180 }}
+                  />
+                  <TextField
+                    label="Pagine"
+                    type="number"
+                    value={pages}
+                    onChange={(e) => setPages(e.target.value)}
+                    slotProps={{ htmlInput: { min: 1 } }}
+                    sx={{ width: 120 }}
+                  />
+                  <FormControl sx={{ width: 160 }}>
+                    <InputLabel>Lingua</InputLabel>
+                    <Select
+                      value={language}
+                      label="Lingua"
+                      onChange={(e) => setLanguage(e.target.value)}
+                    >
+                      {LANGUAGE_OPTIONS.map((l) => (
+                        <MenuItem key={l.value} value={l.value}>
+                          {l.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
+
+                <TextField
+                  label="Descrizione"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  fullWidth
+                  multiline
+                  rows={3}
+                />
+
+                <TextField
+                  label="URL copertina"
+                  value={coverUrl}
+                  onChange={(e) => setCoverUrl(e.target.value)}
+                  fullWidth
+                  error={!!errors.coverUrl}
+                  helperText={errors.coverUrl}
+                  placeholder="https://…"
+                />
+              </Box>
+            </AccordionDetails>
+          </Accordion>
+
+          {/* Form helper text for required fields */}
+          <FormHelperText>* Campi obbligatori</FormHelperText>
+        </Box>
+      </DialogContent>
+
+      <DialogActions>
+        <Button onClick={onClose} disabled={isPending}>
+          Annulla
+        </Button>
+        <Button
+          variant="contained"
+          onClick={handleSubmit}
+          disabled={isPending}
+          startIcon={isPending ? <CircularProgress size={16} color="inherit" /> : undefined}
+        >
+          {isPending ? 'Salvataggio…' : isEdit ? 'Salva modifiche' : 'Aggiungi libro'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}

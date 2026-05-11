@@ -9,6 +9,18 @@ const nextConfig: NextConfig = {
     "@emotion/react",
     "@emotion/styled",
   ],
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'books.google.com',
+      },
+      {
+        protocol: 'http',
+        hostname: 'books.google.com',
+      },
+    ],
+  },
 };
 
 export default nextConfig;
