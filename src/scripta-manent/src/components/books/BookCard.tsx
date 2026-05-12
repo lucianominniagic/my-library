@@ -6,6 +6,16 @@ import { useRouter } from 'next/navigation';
 import { type BookListItemDto } from '@/server/trpc/dto/book.dto';
 import { StarRating } from './StarRating';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Relevance chip helper
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getRelevanceChip(score: number): { label: string; color: 'success' | 'warning' | 'default' } {
+  if (score >= 0.3) return { label: `${Math.round(score * 100)}%`, color: 'success' };
+  if (score >= 0.1) return { label: `${Math.round(score * 100)}%`, color: 'warning' };
+  return { label: `${Math.round(score * 100)}%`, color: 'default' };
+}
+
 interface BookCardProps {
   book: BookListItemDto;
   onEdit: () => void;
@@ -35,6 +45,7 @@ export function BookCard({ book, onEdit, onDelete }: BookCardProps) {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
+        position: 'relative', // needed for absolute relevance chip
         transition: 'box-shadow 0.2s',
         '&:hover': { boxShadow: 4 },
       }}
@@ -144,6 +155,26 @@ export function BookCard({ book, onEdit, onDelete }: BookCardProps) {
           )}
         </CardContent>
       </CardActionArea>
+
+      {/* Relevance score chip — visible only during fulltext search */}
+      {book.relevanceScore !== undefined && (() => {
+        const chip = getRelevanceChip(book.relevanceScore!);
+        return (
+          <Chip
+            size="small"
+            label={chip.label}
+            color={chip.color}
+            sx={{
+              position: 'absolute',
+              bottom: 8,
+              right: 8,
+              fontSize: '0.65rem',
+              height: 20,
+              pointerEvents: 'none', // let clicks pass through to CardActionArea
+            }}
+          />
+        );
+      })()}
     </Card>
   );
 }

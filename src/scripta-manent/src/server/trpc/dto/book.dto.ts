@@ -30,6 +30,7 @@ export type BookListItemDto = {
   genres: GenreDto[];
   tags: TagDto[];
   createdAt: string; // ISO string
+  relevanceScore?: number; // presente solo quando c'è una query fulltext attiva
 };
 
 export type BookDetailDto = BookListItemDto & {

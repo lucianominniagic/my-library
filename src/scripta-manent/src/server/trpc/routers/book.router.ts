@@ -151,14 +151,17 @@ export const bookRouter = router({
       }
 
       // ── Full-text search ───────────────────────────────────────────────────
-      // Approccio ibrido fts_vector + pg_trgm:
+      // Approccio ibrido fts_vector + pg_trgm + ILIKE fallback:
       //   1. fts_vector @@ plainto_tsquery — match semantico italiano su titolo
       //      (peso A), sottotitolo (peso B) e descrizione (peso C) tramite la
       //      colonna TSVECTOR generata; plainto_tsquery tollera input liberi.
-      //   2. ILIKE fallback — cattura query corte, acronimi e parole non
-      //      stemmizzate che plainto_tsquery potrebbe escludere come stop words.
+      //   2. ILIKE su book.title — fallback per query che contengono stop-word
+      //      italiane (es. "da leggere") che plainto_tsquery riduce a tsquery
+      //      quasi vuoto; rank sintetico 0.001 → incluso ma in fondo.
       //   3. similarity su author_fts.name — ricerca fuzzy sugli autori (gli
-      //      autori non sono inclusi in fts_vector).
+      //      autori non sono inclusi in fts_vector); rank 0.0 → in coda.
+      // Esclusione rank=0 avviene nell'ordinamento (GREATEST garantisce >= 0.001
+      // per qualunque riga che passi il WHERE).
       // Join raw su book_authors/authors (niente entity-relation nel QB leggero).
       if (input.q) {
         lightQb
@@ -179,13 +182,18 @@ export const bookRouter = router({
 
       if (input.q) {
         // Con query attiva: ordinamento per rilevanza FTS decrescente.
-        // ts_rank restituisce 0.0 per le righe che matchano solo via ILIKE o
-        // similarity autore (non matchano fts_vector) → appaiono in coda,
-        // ordinate per updated_at come tiebreaker.
-        // Il parametro :q è già bindato nel blocco andWhere precedente.
+        // GREATEST assicura un rank sintetico 0.001 per i match ILIKE-only
+        // (es. query con stop-word italiane come "da leggere"), così rimangono
+        // inclusi ma in coda rispetto ai match fts_vector (0.01–0.3).
+        // Le righe che matchano solo via similarity autore ottengono rank 0.0
+        // → appaiono dopo ILIKE-only, tiebreaker updated_at.
+        // I parametri :q e :qLike sono già bindati nel blocco andWhere precedente.
         lightQb
           .addSelect(
-            `ts_rank(book.fts_vector, plainto_tsquery('italian', f_unaccent(:q)))`,
+            `GREATEST(
+              ts_rank(book.fts_vector, plainto_tsquery('italian', f_unaccent(:q))),
+              CASE WHEN f_unaccent(book.title) ILIKE :qLike THEN 0.001 ELSE 0 END
+            )`,
             'rank',
           )
           .orderBy('rank', 'DESC')
@@ -219,8 +227,16 @@ export const bookRouter = router({
       const rawIds = await lightQb
         .limit(input.limit)
         .offset(offset)
-        .getRawMany<{ id: string }>();
+        .getRawMany<{ id: string; rank?: string }>();
       const ids = rawIds.map((r) => r.id);
+
+      // ── RankMap: id → ts_rank score (solo con query fulltext attiva) ────────
+      const rankMap = new Map<string, number>();
+      if (input.q) {
+        for (const row of rawIds) {
+          rankMap.set(row.id, parseFloat(row.rank ?? '') || 0);
+        }
+      }
 
       // Pagina vuota: ritorno immediato senza il secondo QB
       if (ids.length === 0) {
@@ -251,7 +267,10 @@ export const bookRouter = router({
         .filter((b): b is BookEntity => b !== undefined);
 
       return {
-        data:       orderedBooks.map(mapToListItem),
+        data:       orderedBooks.map((b) => ({
+          ...mapToListItem(b),
+          ...(input.q ? { relevanceScore: rankMap.get(b.id) ?? 0 } : {}),
+        })),
         total,
         page:       input.page,
         totalPages: Math.ceil(total / input.limit),
