@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import path from 'path';
+import fs from 'fs/promises';
 import { TRPCError } from '@trpc/server';
 import { In } from 'typeorm';
 import { router, protectedProcedure } from '../init';
@@ -155,13 +157,13 @@ export const bookRouter = router({
       //   1. fts_vector @@ plainto_tsquery — match semantico italiano su titolo
       //      (peso A), sottotitolo (peso B) e descrizione (peso C) tramite la
       //      colonna TSVECTOR generata; plainto_tsquery tollera input liberi.
-      //   2. ILIKE su book.title — fallback per query che contengono stop-word
-      //      italiane (es. "da leggere") che plainto_tsquery riduce a tsquery
-      //      quasi vuoto; rank sintetico 0.001 → incluso ma in fondo.
+      //   2. ILIKE su book.title — fallback per query con stop-word italiane
+      //      (es. "da leggere") che plainto_tsquery riduce a tsquery quasi vuoto;
+      //      ts_rank sarà 0 per questi match — inclusi ma in coda.
       //   3. similarity su author_fts.name — ricerca fuzzy sugli autori (gli
-      //      autori non sono inclusi in fts_vector); rank 0.0 → in coda.
-      // Esclusione rank=0 avviene nell'ordinamento (GREATEST garantisce >= 0.001
-      // per qualunque riga che passi il WHERE).
+      //      autori non sono inclusi in fts_vector); ts_rank 0 → in coda.
+      // Tutti i risultati che superano il WHERE vengono inclusi; nessun filtro
+      // applicativo sul rank. L'ordinamento per rilevanza usa ts_rank puro.
       // Join raw su book_authors/authors (niente entity-relation nel QB leggero).
       if (input.q) {
         lightQb
@@ -181,23 +183,18 @@ export const bookRouter = router({
       const dir = input.sortDir.toUpperCase() as 'ASC' | 'DESC';
 
       if (input.q) {
-        // Con query attiva: ordinamento per rilevanza FTS decrescente.
-        // GREATEST assicura un rank sintetico 0.001 per i match ILIKE-only
-        // (es. query con stop-word italiane come "da leggere"), così rimangono
-        // inclusi ma in coda rispetto ai match fts_vector (0.01–0.3).
-        // Le righe che matchano solo via similarity autore ottengono rank 0.0
-        // → appaiono dopo ILIKE-only, tiebreaker updated_at.
+        // Con query attiva: ordinamento per rilevanza ts_rank decrescente.
+        // I match ILIKE-only (stop-word italiane) e author-only ottengono
+        // ts_rank = 0 → inclusi ma in coda, tiebreaker year_read DESC NULLS LAST
+        // (i libri TBR con year_read NULL vanno in fondo al tiebreaker).
         // I parametri :q e :qLike sono già bindati nel blocco andWhere precedente.
         lightQb
           .addSelect(
-            `GREATEST(
-              ts_rank(book.fts_vector, plainto_tsquery('italian', f_unaccent(:q))),
-              CASE WHEN f_unaccent(book.title) ILIKE :qLike THEN 0.001 ELSE 0 END
-            )`,
+            `ts_rank(book.fts_vector, plainto_tsquery('italian', f_unaccent(:q)))`,
             'rank',
           )
           .orderBy('rank', 'DESC')
-          .addOrderBy('book.updated_at', 'DESC');
+          .addOrderBy('book.year_read', 'DESC', 'NULLS LAST');
       } else {
         if (input.sortBy === 'author') {
           // Subquery correlata: autore primario per sort_order ASC.
@@ -209,6 +206,7 @@ export const bookRouter = router({
               ORDER BY ba_s.sort_order ASC LIMIT 1)`,
             dir,
           );
+          lightQb.addOrderBy('book.year_read', 'DESC', 'NULLS LAST');
         } else {
           const sortMap: Record<string, string> = {
             title:     'book.title',
@@ -218,6 +216,9 @@ export const bookRouter = router({
             updatedAt: 'book.updated_at',
           };
           lightQb.orderBy(sortMap[input.sortBy] ?? 'book.updated_at', dir);
+          if (input.sortBy !== 'yearRead') {
+            lightQb.addOrderBy('book.year_read', 'DESC', 'NULLS LAST');
+          }
         }
       }
 
@@ -402,7 +403,7 @@ export const bookRouter = router({
       const userId = ctx.session.user.id as string;
       const db     = ctx.db;
 
-      const result = await db.transaction(async (em) => {
+      const txResult = await db.transaction(async (em) => {
         const bookRepo = em.getRepository(BookEntity);
 
         // 1. Trova il libro verificando l'ownership
@@ -419,8 +420,8 @@ export const bookRouter = router({
         }
 
         // 2. Aggiorna i campi scalari (solo quelli esplicitamente forniti)
-        if (input.title         !== undefined) book.title         = input.title;
-        if (input.titleEn       !== undefined) book.titleEn       = input.titleEn       ?? null;
+        const originalIsbn = book.isbn; // cattura PRIMA della modifica per il confronto post-save
+        if (input.title         !== undefined) book.title         = input.title;        if (input.titleEn       !== undefined) book.titleEn       = input.titleEn       ?? null;
         if (input.subtitle      !== undefined) book.subtitle      = input.subtitle      ?? null;
         if (input.isbn          !== undefined) book.isbn          = input.isbn          ?? null;
         if (input.publisher     !== undefined) book.publisher     = input.publisher     ?? null;
@@ -428,7 +429,15 @@ export const bookRouter = router({
         if (input.language      !== undefined) book.language      = input.language;
         if (input.pages         !== undefined) book.pages         = input.pages         ?? null;
         if (input.description   !== undefined) book.description   = input.description   ?? null;
-        if (input.coverUrl      !== undefined) book.coverUrl      = input.coverUrl      ?? null;
+        if (input.coverUrl !== undefined) {
+          // Se era un file locale e la URL cambia (o viene rimossa), elimina il vecchio file
+          if (book.coverUrl?.startsWith('/covers/') && input.coverUrl !== book.coverUrl) {
+            const oldPath = path.join(process.cwd(), 'public', book.coverUrl);
+            await fs.unlink(oldPath).catch(() => {}); // silenzioso se già eliminato
+          }
+          // null = rimozione esplicita; stringa = nuova URL; undefined già escluso dal guard
+          book.coverUrl = input.coverUrl ?? null;
+        }
         if (input.yearRead      !== undefined) book.yearRead      = input.yearRead      ?? null;
         if (input.rating        !== undefined) book.rating        = input.rating        ?? null;
         if (input.notes         !== undefined) book.notes         = input.notes         ?? null;
@@ -466,7 +475,7 @@ export const bookRouter = router({
         }
 
         // 6. Ricarica con tutte le relazioni per il DTO finale
-        return em.getRepository(BookEntity).findOneOrFail({
+        const updated = await em.getRepository(BookEntity).findOneOrFail({
           where:     { id: book.id },
           relations: {
             bookAuthors: { author: true },
@@ -474,17 +483,35 @@ export const bookRouter = router({
             tags:        true,
           },
         });
+        return { updated, originalIsbn };
       });
+
+      const { updated: result, originalIsbn } = txResult;
 
       // ── Cover fetch (fuori dalla transazione — non bloccante) ──────────────
       // REQ-31: mancanza cover non blocca l'aggiornamento.
-      if (!result.coverUrl && input.coverUrl === undefined) {
+      // Bug 1: se isbn fornito e nessuna coverUrl esplicita → prova fetch cover.
+      // Fallback: se il libro non ha cover e nessuna coverUrl è stata inviata.
+      const isbnChanged      = !!input.isbn && input.isbn !== originalIsbn;
+      console.log('[book.update] Input ISBN:', input.isbn);
+      console.log('[book.update] Current ISBN:', result.isbn);
+      const needsFallbackCover = !result.coverUrl && input.coverUrl === undefined;
+
+      const shouldFetchCover =
+        (isbnChanged && !input.coverUrl) ||   // ISBN nuovo/modificato → fetch sempre, salvo coverUrl esplicita nella stessa request
+        needsFallbackCover;                    // fallback: libro senza cover e nessuna coverUrl inviata
+      console.log('[book.update] ISBN changed:', isbnChanged);
+      console.log('[book.update] Needs fallback cover:', needsFallbackCover);
+      console.log('[book.update] Current coverUrl:', input.coverUrl);
+      console.log('[book.update] Should fetch cover:', shouldFetchCover);
+      if (shouldFetchCover) {
         const primaryAuthor = result.bookAuthors?.[0]?.author?.name ?? '';
         try {
           const cover = await fetchCoverUrl({
             titleEn:    input.titleEn ?? result.titleEn,
             titleIt:    result.title,
             authorName: primaryAuthor,
+            isbn:       input.isbn ?? result.isbn ?? undefined,
           });
           if (cover) {
             await ctx.db.getRepository(BookEntity).update(result.id, { coverUrl: cover });

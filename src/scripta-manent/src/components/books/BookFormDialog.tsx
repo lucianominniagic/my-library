@@ -105,7 +105,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
   const [language, setLanguage] = useState('it');
   const [pages, setPages] = useState('');
   const [description, setDescription] = useState('');
-  const [coverUrl, setCoverUrl] = useState('');
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
 
   // ── Author search state ──────────────────────────────────────────────────────
   const [authorInput, setAuthorInput] = useState('');
@@ -166,7 +166,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
       setLanguage(book.language ?? 'it');
       setPages(book.pages != null ? String(book.pages) : '');
       setDescription(book.description ?? '');
-      setCoverUrl(book.coverUrl ?? '');
+      setCoverUrl(book.coverUrl ?? null);
       setSelectedAuthors(
         book.authors.map((a) => ({
           authorId: a.id,
@@ -191,9 +191,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
       setLanguage('it');
       setPages('');
       setDescription('');
-      setCoverUrl('');
-      setSelectedAuthors([]);
-      setSelectedGenres([]);
+      setCoverUrl(null);
     }
     setErrors({});
     setUploadingCover(false);
@@ -217,7 +215,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
         newErrors.yearRead = 'Anno non valido (1800–2200)';
       }
     }
-    if (coverUrl.trim()) {
+    if (coverUrl?.trim()) {
       const val = coverUrl.trim();
       // Accept relative paths (e.g. /covers/uuid.jpg from the upload endpoint)
       // and reject strings that look like they should be full URLs but aren't.
@@ -263,34 +261,60 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
   async function handleSubmit() {
     if (!validate()) return;
 
-    const yearReadNum = yearRead.trim() ? Number(yearRead) : undefined;
-    const payload = {
-      title: title.trim(),
-      subtitle: subtitle.trim() || undefined,
-      titleEn: titleEn.trim() || undefined,
-      isbn: isbn.trim() || undefined,
-      publisher: publisher.trim() || undefined,
-      publishedYear: publishedYear.trim() ? Number(publishedYear) : undefined,
-      language,
-      pages: pages.trim() ? Number(pages) : undefined,
-      description: description.trim() || undefined,
-      coverUrl: coverUrl.trim() || undefined,
-      yearRead: yearReadNum,
-      rating: yearReadNum != null && rating != null ? rating : undefined,
-      notes: notes.trim() || undefined,
-      authors: selectedAuthors.map((a, i) => ({
-        authorId: a.authorId,
-        role: a.role,
-        sortOrder: i,
-      })),
-      genreIds: selectedGenres.map((g) => g.id),
-      tagIds: [],
-    };
+    const authors = selectedAuthors.map((a, i) => ({
+      authorId: a.authorId,
+      role: a.role,
+      sortOrder: i,
+    }));
+    const genreIds = selectedGenres.map((g) => g.id);
 
     if (isEdit && book) {
-      updateMutation.mutate({ id: book.id, ...payload });
+      // update: campo vuoto → null (cancella il valore nel DB)
+      const yearReadNum = yearRead.trim() ? Number(yearRead) : null;
+      updateMutation.mutate({
+        id: book.id,
+        title: title.trim(),
+        subtitle: subtitle.trim() || null,
+        titleEn: titleEn.trim() || null,
+        isbn: isbn.trim() || null,
+        publisher: publisher.trim() || null,
+        publishedYear: publishedYear.trim() ? Number(publishedYear) : null,
+        language,
+        pages: pages.trim() ? Number(pages) : null,
+        description: description.trim() || null,
+        // null  = cover rimossa esplicitamente → invia null al backend
+        // ''    = campo svuotato manualmente → undefined (non toccare)
+        // stringa = URL valida → invia la stringa
+        coverUrl: coverUrl === null ? null : (coverUrl?.trim() || undefined),
+        yearRead: yearReadNum,
+        rating: yearReadNum != null && rating != null ? rating : null,
+        notes: notes.trim() || null,
+        authors,
+        genreIds,
+        tagIds: [],
+      });
     } else {
-      createMutation.mutate(payload);
+      // create: campo vuoto → undefined (il DB usa il default NULL, non inviare)
+      const yearReadNum = yearRead.trim() ? Number(yearRead) : undefined;
+      createMutation.mutate({
+        title: title.trim(),
+        subtitle: subtitle.trim() || undefined,
+        titleEn: titleEn.trim() || undefined,
+        isbn: isbn.trim() || undefined,
+        publisher: publisher.trim() || undefined,
+        publishedYear: publishedYear.trim() ? Number(publishedYear) : undefined,
+        language,
+        pages: pages.trim() ? Number(pages) : undefined,
+        description: description.trim() || undefined,
+        // BookCreateSchema non accetta null — se coverUrl è null (mai in create, ma per sicurezza) → undefined
+        coverUrl: coverUrl === null ? undefined : (coverUrl?.trim() || undefined),
+        yearRead: yearReadNum,
+        rating: yearReadNum != null && rating != null ? rating : undefined,
+        notes: notes.trim() || undefined,
+        authors,
+        genreIds,
+        tagIds: [],
+      });
     }
   }
 
@@ -661,7 +685,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
                         size="small"
                         color="error"
                         disabled={uploadingCover}
-                        onClick={() => setCoverUrl('')}
+                        onClick={() => setCoverUrl(null)}
                       >
                         ❌ Rimuovi
                       </Button>
@@ -671,7 +695,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
                   {/* URL text field — still allows manual paste */}
                   <TextField
                     label="URL copertina"
-                    value={coverUrl}
+                    value={coverUrl ?? ''}
                     onChange={(e) => setCoverUrl(e.target.value)}
                     fullWidth
                     size="small"

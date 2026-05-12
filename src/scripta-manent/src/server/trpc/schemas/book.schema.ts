@@ -42,4 +42,16 @@ export const BookCreateSchema = z.object({
 
 export const BookUpdateSchema = BookCreateSchema.partial().extend({
   id: z.string().uuid(),
+  // Campi nullable: null = cancellazione esplicita del valore; undefined = campo non toccato
+  subtitle:      z.string().max(500).trim().nullable().optional(),
+  isbn:          z.string().trim().nullable().optional(),
+  publisher:     z.string().trim().nullable().optional(),
+  publishedYear: z.number().int().min(0).max(2200).nullable().optional(),
+  pages:         z.number().int().min(1).nullable().optional(),
+  description:   z.string().trim().nullable().optional(),
+  titleEn:       z.string().max(500).trim().nullable().optional(),
+  coverUrl:      z.union([z.string().url(), z.string().regex(/^\/covers\//), z.null()]).optional(),
+  yearRead:      z.number().int().min(1800).max(2200).nullable().optional(),
+  rating:        z.number().int().min(1).max(5).nullable().optional(),
+  notes:         z.string().trim().nullable().optional(),
 });
