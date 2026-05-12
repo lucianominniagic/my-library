@@ -46,6 +46,7 @@ export async function fetchVolumeDataByIsbn(isbn: string): Promise<GoogleBooksVo
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
     if (!response.ok) return null;
+    console.dir(await response.clone().json()); // Log completo per debug
     const data = (await response.json()) as GoogleBooksResponse;
     if (!data.totalItems || !data.items?.length) return null;
     const volumeInfo = data.items[0]?.volumeInfo;
