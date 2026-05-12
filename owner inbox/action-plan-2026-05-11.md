@@ -1,7 +1,7 @@
 # 🗺️ Scripta Manent — Piano d'Azione
 
 **Data:** 2026-05-11 | **Autori:** Gibson (Architect) + Dick (BA) + Shakespeare (DB)
-**Aggiornato:** 2026-05-12 | Fase 6 ✅ · Fase 7 ✅ · Ricerca ibrida fts_vector + pg_trgm ✅ · Relevance sorting ✅
+**Aggiornato:** 2026-05-12 | Fase 6 ✅ · Fase 7 ✅ · Ricerca ibrida fts_vector + pg_trgm ✅ · Relevance sorting ✅ · Fase 8 ✅ — **TUTTE LE FASI COMPLETATE** 🎉
 
 ---
 
@@ -57,7 +57,7 @@
 | **6** | Search & Filters | Ishiguro | 5 | pg_trgm search (già nel backend), chip rimovibili, filtri tag/anno/stato, URL params, contatore TBR/Letti | ✅ **COMPLETATA** |
 | **7** | Cover Integration | McCarthy + Ishiguro | 5 | `title_en` field, Google Books service (waterfall en→it→null), upload manuale cover, campo form, display dettaglio | ✅ **COMPLETATA** |
 | **7b** | Search Upgrade | McCarthy | 7 | Ricerca ibrida `fts_vector @@ plainto_tsquery('italian')` + `pg_trgm` autori + relevance sorting (`ts_rank DESC`) | ✅ **COMPLETATA** |
-| **8** | Polish | Ishiguro | 6+7 | Tag Manager, dark mode, skeleton loading, export CSV/JSON | ⏳ |
+| **8** | Polish | Ishiguro | 6+7 | Tag Manager, dark mode, skeleton loading, export CSV/JSON | ✅ **COMPLETATA** |
 
 **Primo deliverable usabile (thin vertical slice):** fine Fase 5
 
