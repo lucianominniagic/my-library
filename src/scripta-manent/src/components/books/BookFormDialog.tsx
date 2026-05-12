@@ -21,14 +21,16 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Snackbar,
   TextField,
   Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
+import { createFilterOptions } from '@mui/material/Autocomplete';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { trpc } from '@/lib/trpc/client';
-import { type BookDetailDto, type GenreDto } from '@/server/trpc/dto/book.dto';
+import { type BookDetailDto, type CoverFetchResult, type GenreDto } from '@/server/trpc/dto/book.dto';
 import { StarRating } from './StarRating';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,6 +38,14 @@ import { StarRating } from './StarRating';
 // ─────────────────────────────────────────────────────────────────────────────
 
 type AuthorRole = 'author' | 'editor' | 'translator' | 'illustrator' | 'other';
+
+interface TagOption {
+  id: string;
+  name: string;
+  color: string | null;
+}
+
+const tagFilter = createFilterOptions<TagOption>();
 
 interface SelectedAuthor {
   authorId: string;
@@ -98,6 +108,8 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
   const [notes, setNotes] = useState('');
   const [selectedAuthors, setSelectedAuthors] = useState<SelectedAuthor[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<GenreDto[]>([]);
+  const [selectedTags, setSelectedTags] = useState<TagOption[]>([]);
+  const [tagInputValue, setTagInputValue] = useState('');
   // Advanced
   const [isbn, setIsbn] = useState('');
   const [publisher, setPublisher] = useState('');
@@ -124,6 +136,12 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
   // ── Genre options ─────────────────────────────────────────────────────────
   const { data: genreOptions = [] } = trpc.genre.list.useQuery();
 
+  // ── Tag options ───────────────────────────────────────────────────────────
+  const { data: tagData = [] } = trpc.tag.list.useQuery();
+  const allTags: TagOption[] = tagData.map((t) => ({ id: t.id, name: t.name, color: t.color }));
+
+  const createTagMutation = trpc.tag.create.useMutation();
+
   // ── Mutations ────────────────────────────────────────────────────────────────
   const createMutation = trpc.book.create.useMutation({
     onSuccess: async () => {
@@ -136,6 +154,10 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
     onSuccess: async (data) => {
       await utils.book.list.invalidate();
       await utils.book.byId.invalidate({ id: data.id });
+      const result = data.coverFetchResult as CoverFetchResult | undefined;
+      if (result === 'found' || result === 'not_found') {
+        setCoverSnackbar({ open: true, result });
+      }
       onClose();
     },
   });
@@ -150,6 +172,9 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
 
   // ── Cover upload state ────────────────────────────────────────────────────────
   const [uploadingCover, setUploadingCover] = useState(false);
+
+  // ── Cover fetch snackbar state ────────────────────────────────────────────────
+  const [coverSnackbar, setCoverSnackbar] = useState<{ open: boolean; result: 'found' | 'not_found' } | null>(null);
 
   // ── Pre-fill form when editing ────────────────────────────────────────────────
   useEffect(() => {
@@ -177,6 +202,8 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
         })),
       );
       setSelectedGenres(book.genres);
+      setSelectedTags(book.tags.map((t) => ({ id: t.id, name: t.name, color: t.color })));
+      setCoverSnackbar(null);
     } else if (open && !book) {
       // Reset for create
       setTitle('');
@@ -192,11 +219,14 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
       setPages('');
       setDescription('');
       setCoverUrl(null);
+      setSelectedTags([]);
+      setCoverSnackbar(null);
     }
     setErrors({});
     setUploadingCover(false);
     setAuthorInput('');
     setDebouncedAuthorInput('');
+    setTagInputValue('');
   }, [open, book]);
 
   // ── Validation ────────────────────────────────────────────────────────────────
@@ -267,6 +297,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
       sortOrder: i,
     }));
     const genreIds = selectedGenres.map((g) => g.id);
+    const tagIds   = selectedTags.filter((t) => t.id !== '__new__').map((t) => t.id);
 
     if (isEdit && book) {
       // update: campo vuoto → null (cancella il valore nel DB)
@@ -291,7 +322,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
         notes: notes.trim() || null,
         authors,
         genreIds,
-        tagIds: [],
+        tagIds,
       });
     } else {
       // create: campo vuoto → undefined (il DB usa il default NULL, non inviare)
@@ -313,7 +344,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
         notes: notes.trim() || undefined,
         authors,
         genreIds,
-        tagIds: [],
+        tagIds,
       });
     }
   }
@@ -361,13 +392,14 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
   // Render
   // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <Dialog
-      open={open}
-      onClose={isPending ? undefined : onClose}
-      fullScreen={fullScreen}
-      maxWidth="md"
-      fullWidth
-    >
+    <>
+      <Dialog
+        open={open}
+        onClose={isPending ? undefined : onClose}
+        fullScreen={fullScreen}
+        maxWidth="md"
+        fullWidth
+      >
       <DialogTitle>{isEdit ? 'Modifica libro' : 'Aggiungi libro'}</DialogTitle>
 
       <DialogContent dividers>
@@ -516,6 +548,103 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
               <TextField
                 {...params}
                 label="Generi"
+              />
+            )}
+          />
+
+          {/* ── Tag ──────────────────────────────────────────────────────────── */}
+          <Autocomplete
+            multiple
+            options={allTags}
+            value={selectedTags}
+            inputValue={tagInputValue}
+            onInputChange={(_, value) => setTagInputValue(value)}
+            onChange={async (_, newValue) => {
+              const newTagOpt = newValue.find((t) => t.id === '__new__');
+              if (!newTagOpt) {
+                setSelectedTags(newValue);
+                return;
+              }
+              // Inline tag creation
+              const realName = tagInputValue.trim();
+              if (!realName) {
+                setSelectedTags(newValue.filter((t) => t.id !== '__new__'));
+                return;
+              }
+              try {
+                const created = await createTagMutation.mutateAsync({ name: realName });
+                await utils.tag.list.invalidate();
+                setSelectedTags([
+                  ...newValue.filter((t) => t.id !== '__new__'),
+                  { id: created.id, name: created.name, color: created.color },
+                ]);
+              } catch {
+                // Creation failed: just drop the __new__ option
+                setSelectedTags(newValue.filter((t) => t.id !== '__new__'));
+              }
+            }}
+            getOptionLabel={(opt) => opt.name}
+            isOptionEqualToValue={(opt, val) => opt.id === val.id}
+            filterOptions={(options, params) => {
+              const filtered = tagFilter(options, params);
+              if (
+                params.inputValue !== '' &&
+                !options.find((o) => o.name.toLowerCase() === params.inputValue.toLowerCase())
+              ) {
+                filtered.push({
+                  id: '__new__',
+                  name: `Crea "${params.inputValue}"`,
+                  color: null,
+                });
+              }
+              return filtered;
+            }}
+            renderValue={(value, getItemProps) => {
+              const items = value as TagOption[];
+              // MUI v9: getItemProps replaces getTagProps
+              const getProps = getItemProps as (args: { index: number }) => {
+                key: number;
+                className: string;
+                disabled: boolean;
+                'data-item-index': number;
+                tabIndex: -1;
+                onDelete: (event: React.SyntheticEvent) => void;
+              };
+              return items.map((tag, index) => {
+                const { key, ...itemProps } = getProps({ index });
+                return (
+                  <Chip
+                    key={key}
+                    label={tag.name}
+                    size="small"
+                    style={
+                      tag.color
+                        ? { backgroundColor: tag.color, color: '#fff' }
+                        : undefined
+                    }
+                    {...itemProps}
+                  />
+                );
+              });
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Tag"
+                slotProps={{
+                  ...params.slotProps,
+                  input: {
+                    ...params.slotProps.input,
+                    endAdornment: (
+                      <>
+                        {createTagMutation.isPending && (
+                          <CircularProgress size={16} sx={{ mr: 0.5 }} />
+                        )}
+                        {params.slotProps.input.endAdornment}
+                      </>
+                    ),
+                  },
+                }}
               />
             )}
           />
@@ -726,6 +855,24 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
           {isPending ? 'Salvataggio…' : isEdit ? 'Salva modifiche' : 'Aggiungi libro'}
         </Button>
       </DialogActions>
-    </Dialog>
+      </Dialog>
+
+      <Snackbar
+        open={coverSnackbar?.open ?? false}
+        autoHideDuration={4000}
+        onClose={() => setCoverSnackbar(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={coverSnackbar?.result === 'found' ? 'success' : 'warning'}
+          onClose={() => setCoverSnackbar(null)}
+          variant="filled"
+        >
+          {coverSnackbar?.result === 'found'
+            ? '✅ Copertina trovata su Google Books'
+            : '⚠️ Nessuna copertina trovata su Google Books'}
+        </Alert>
+      </Snackbar>
+    </>
   );
 }

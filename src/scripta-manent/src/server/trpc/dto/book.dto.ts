@@ -45,6 +45,12 @@ export type BookDetailDto = BookListItemDto & {
   updatedAt: string;
 };
 
+export type CoverFetchResult = 'found' | 'not_found' | 'not_attempted';
+
+export type BookUpdateResponseDto = BookDetailDto & {
+  coverFetchResult?: CoverFetchResult;
+};
+
 export type PaginatedResult<T> = {
   data: T[];
   total: number;

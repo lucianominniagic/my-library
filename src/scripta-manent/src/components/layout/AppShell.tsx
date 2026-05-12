@@ -22,6 +22,9 @@ import {
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import LogoutIcon from '@mui/icons-material/Logout';
+import LightModeIcon from '@mui/icons-material/LightMode';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import { useThemeMode } from '@/lib/theme-provider';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Nav links
@@ -46,6 +49,7 @@ export function AppShell({ children }: AppShellProps) {
   const { data: session } = useSession();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const { mode, toggleTheme } = useThemeMode();
 
   // Hide nav on login page
   const hideNav = pathname === '/login';
@@ -168,6 +172,16 @@ export function AppShell({ children }: AppShellProps) {
 
               {/* Spacer */}
               <Box sx={{ flexGrow: 1 }} />
+
+              {/* Dark mode toggle */}
+              <IconButton
+                onClick={toggleTheme}
+                color="inherit"
+                aria-label={mode === 'dark' ? 'Passa a tema chiaro' : 'Passa a tema scuro'}
+                sx={{ mr: 0.5 }}
+              >
+                {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+              </IconButton>
 
               {/* Avatar + dropdown */}
               <IconButton onClick={handleAvatarClick} sx={{ p: 0.5 }} aria-label="profilo utente">

@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Card, CardActionArea, CardContent, Chip, Typography } from '@mui/material';
+import { Box, Card, CardActionArea, CardContent, Chip, Tooltip, Typography } from '@mui/material';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { type BookListItemDto } from '@/server/trpc/dto/book.dto';
@@ -150,6 +150,27 @@ export function BookCard({ book, onEdit, onDelete }: BookCardProps) {
                   variant="outlined"
                   sx={{ height: 16, fontSize: '0.6rem' }}
                 />
+              ))}
+            </Box>
+          )}
+
+          {/* Tag colour dots */}
+          {book.tags.length > 0 && (
+            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.75 }}>
+              {book.tags.map((tag) => (
+                <Tooltip key={tag.id} title={tag.name} arrow>
+                  <Box
+                    sx={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      backgroundColor: tag.color ?? 'grey.400',
+                      border: '1px solid rgba(0,0,0,0.15)',
+                      cursor: 'default',
+                      flexShrink: 0,
+                    }}
+                  />
+                </Tooltip>
               ))}
             </Box>
           )}

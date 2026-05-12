@@ -14,6 +14,8 @@ import {
 import {
   type BookListItemDto,
   type BookDetailDto,
+  type BookUpdateResponseDto,
+  type CoverFetchResult,
   type PaginatedResult,
 } from '../dto/book.dto';
 import { fetchCoverUrl } from '../services/google-books.service';
@@ -212,12 +214,16 @@ export const bookRouter = router({
             title:     'book.title',
             yearRead:  'book.year_read',
             rating:    'book.rating',
-            createdAt: 'book.created_at',
-            updatedAt: 'book.updated_at',
+            createdAt: 'book.created_at'
           };
-          lightQb.orderBy(sortMap[input.sortBy] ?? 'book.updated_at', dir);
+          const primarySort = sortMap[input.sortBy] ?? 'book.created_at';
+          // Quando il sort primario non è esplicito su year_read,
+          // i TBR (year_read IS NULL) vanno PRIMA dei letti — NULLS FIRST.
           if (input.sortBy !== 'yearRead') {
-            lightQb.addOrderBy('book.year_read', 'DESC', 'NULLS LAST');
+            lightQb.orderBy('book.year_read IS NOT NULL', 'ASC'); // false(TBR)=0 viene prima di true(letto)=1
+            lightQb.addOrderBy(primarySort, dir);
+          } else {
+            lightQb.orderBy(primarySort, dir);
           }
         }
       }
@@ -399,7 +405,7 @@ export const bookRouter = router({
    */
   update: protectedProcedure
     .input(BookUpdateSchema)
-    .mutation(async ({ ctx, input }): Promise<BookDetailDto> => {
+    .mutation(async ({ ctx, input }): Promise<BookUpdateResponseDto> => {
       const userId = ctx.session.user.id as string;
       const db     = ctx.db;
 
@@ -504,6 +510,8 @@ export const bookRouter = router({
       console.log('[book.update] Needs fallback cover:', needsFallbackCover);
       console.log('[book.update] Current coverUrl:', input.coverUrl);
       console.log('[book.update] Should fetch cover:', shouldFetchCover);
+
+      let coverFetchResult: CoverFetchResult = 'not_attempted';
       if (shouldFetchCover) {
         const primaryAuthor = result.bookAuthors?.[0]?.author?.name ?? '';
         try {
@@ -516,13 +524,17 @@ export const bookRouter = router({
           if (cover) {
             await ctx.db.getRepository(BookEntity).update(result.id, { coverUrl: cover });
             result.coverUrl = cover;
+            coverFetchResult = 'found';
+          } else {
+            coverFetchResult = 'not_found';
           }
         } catch (err) {
           console.warn('[book.update] Cover fetch non riuscito:', err);
+          coverFetchResult = 'not_found';
         }
       }
 
-      return mapToDetail(result);
+      return { ...mapToDetail(result), coverFetchResult };
     }),
 
   /**

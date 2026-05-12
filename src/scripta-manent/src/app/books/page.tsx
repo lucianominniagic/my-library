@@ -23,6 +23,7 @@ import {
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import DownloadIcon from '@mui/icons-material/Download';
 import SearchIcon from '@mui/icons-material/Search';
 import { trpc } from '@/lib/trpc/client';
 import { type BookDetailDto, type BookListItemDto } from '@/server/trpc/dto/book.dto';
@@ -50,7 +51,7 @@ function BooksGridSkeleton() {
   return (
     <Grid container spacing={2}>
       {Array.from({ length: 8 }).map((_, i) => (
-        <Grid key={i} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+        <Grid key={i} size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
           <Box sx={{ borderRadius: 2, overflow: 'hidden' }}>
             <Skeleton variant="rectangular" sx={{ paddingTop: '150%', width: '100%' }} />
             <Box sx={{ p: 1.5 }}>
@@ -251,13 +252,24 @@ function BooksPageInner() {
           </Typography>
         </Box>
 
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleOpenCreate}
-        >
-          Aggiungi libro
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Button
+            variant="outlined"
+            size="small"
+            href="/api/export/books"
+            download
+            startIcon={<DownloadIcon />}
+          >
+            Esporta CSV
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenCreate}
+          >
+            Aggiungi libro
+          </Button>
+        </Box>
       </Box>
 
       {/* ── Filters ──────────────────────────────────────────────────────── */}
