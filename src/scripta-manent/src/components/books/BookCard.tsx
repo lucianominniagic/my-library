@@ -153,27 +153,6 @@ export function BookCard({ book, onEdit, onDelete }: BookCardProps) {
               ))}
             </Box>
           )}
-
-          {/* Tag colour dots */}
-          {book.tags.length > 0 && (
-            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.75 }}>
-              {book.tags.map((tag) => (
-                <Tooltip key={tag.id} title={tag.name} arrow>
-                  <Box
-                    sx={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: '50%',
-                      backgroundColor: tag.color ?? 'grey.400',
-                      border: '1px solid rgba(0,0,0,0.15)',
-                      cursor: 'default',
-                      flexShrink: 0,
-                    }}
-                  />
-                </Tooltip>
-              ))}
-            </Box>
-          )}
         </CardContent>
       </CardActionArea>
 

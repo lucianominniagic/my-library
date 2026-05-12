@@ -15,12 +15,59 @@ interface GoogleBooksResponse {
   totalItems: number;
   items?: Array<{
     volumeInfo?: {
+      publisher?: string;
+      publishedDate?: string;
+      description?: string;
+      pageCount?: number;
       imageLinks?: {
         thumbnail?: string;
         smallThumbnail?: string;
       };
     };
   }>;
+}
+
+/** Dati estratti da Google Books per arricchire un libro. */
+export interface GoogleBooksVolumeData {
+  coverUrl: string | null;
+  publisher: string | null;
+  publishedDate: string | null;
+  description: string | null;
+  pageCount: number | null;
+}
+
+/**
+ * Recupera i dati completi di un volume tramite ISBN.
+ * Non lancia mai: errori di rete o API → null.
+ */
+export async function fetchVolumeDataByIsbn(isbn: string): Promise<GoogleBooksVolumeData | null> {
+  const url = `${GOOGLE_BOOKS_BASE}?q=isbn:${encodeURIComponent(isbn)}&maxResults=1`;
+  console.log('[google-books] fetchVolumeDataByIsbn:', url);
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    if (!response.ok) return null;
+    const data = (await response.json()) as GoogleBooksResponse;
+    if (!data.totalItems || !data.items?.length) return null;
+    const volumeInfo = data.items[0]?.volumeInfo;
+    if (!volumeInfo) return null;
+
+    const imageLinks = volumeInfo.imageLinks;
+    const raw = imageLinks?.thumbnail ?? imageLinks?.smallThumbnail ?? null;
+    const coverUrl = raw ? raw.replace(/^http:\/\//, 'https://') : null;
+
+    const result: GoogleBooksVolumeData = {
+      coverUrl,
+      publisher:     volumeInfo.publisher     ?? null,
+      publishedDate: volumeInfo.publishedDate ?? null,
+      description:   volumeInfo.description   ?? null,
+      pageCount:     volumeInfo.pageCount      ?? null,
+    };
+    console.log('[google-books] fetchVolumeDataByIsbn result:', JSON.stringify(result, null, 2));
+    return result;
+  } catch (err) {
+    console.warn('[google-books] fetchVolumeDataByIsbn fallito:', err);
+    return null;
+  }
 }
 
 function extractThumbnail(data: GoogleBooksResponse): string | null {

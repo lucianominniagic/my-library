@@ -18,9 +18,19 @@ import {
   type CoverFetchResult,
   type PaginatedResult,
 } from '../dto/book.dto';
-import { fetchCoverUrl } from '../services/google-books.service';
+import { fetchCoverUrl, fetchVolumeDataByIsbn } from '../services/google-books.service';
 
 // ─────────────────────────── mapping helpers ─────────────────────────────────
+
+/**
+ * Estrae l'anno numerico da una stringa publishedDate di Google Books.
+ * Formati accettati: "YYYY", "YYYY-MM", "YYYY-MM-DD".
+ * Restituisce null se non parsabile.
+ */
+function parsePublishedYear(dateStr: string): number | null {
+  const year = parseInt(dateStr.substring(0, 4), 10);
+  return Number.isFinite(year) && year > 0 ? year : null;
+}
 
 function mapToListItem(book: BookEntity): BookListItemDto {
   const authors = (book.bookAuthors ?? [])
@@ -494,7 +504,7 @@ export const bookRouter = router({
 
       const { updated: result, originalIsbn } = txResult;
 
-      // ── Cover fetch (fuori dalla transazione — non bloccante) ──────────────
+      // ── Google Books fetch (fuori dalla transazione — non bloccante) ─────────
       // REQ-31: mancanza cover non blocca l'aggiornamento.
       // Bug 1: se isbn fornito e nessuna coverUrl esplicita → prova fetch cover.
       // Fallback: se il libro non ha cover e nessuna coverUrl è stata inviata.
@@ -511,25 +521,88 @@ export const bookRouter = router({
       console.log('[book.update] Current coverUrl:', input.coverUrl);
       console.log('[book.update] Should fetch cover:', shouldFetchCover);
 
+      // ISBN effettivo da usare per Google Books (input ha precedenza sul DB)
+      const effectiveIsbn = input.isbn ?? result.isbn ?? null;
+
+      // Arricchimento metadati: richiesto se ISBN presente e almeno un campo è null
+      const needsMetadataEnrichment =
+        !!effectiveIsbn &&
+        (result.publisher    === null ||
+         result.publishedYear === null ||
+         result.description   === null ||
+         result.pages         === null);
+
+      const primaryAuthor = result.bookAuthors?.[0]?.author?.name ?? '';
       let coverFetchResult: CoverFetchResult = 'not_attempted';
-      if (shouldFetchCover) {
-        const primaryAuthor = result.bookAuthors?.[0]?.author?.name ?? '';
+
+      // ── Step 1: fetch via ISBN (cover + metadati in un'unica chiamata API) ────
+      // Eseguito se: serve la cover con ISBN disponibile, OPPURE serve arricchire i metadati.
+      if (effectiveIsbn && (shouldFetchCover || needsMetadataEnrichment)) {
+        const volumeData = await fetchVolumeDataByIsbn(effectiveIsbn);
+
+        if (volumeData) {
+          // Cover: applica solo se shouldFetchCover e non ancora impostata
+          if (shouldFetchCover && volumeData.coverUrl) {
+            await ctx.db.getRepository(BookEntity).update(result.id, { coverUrl: volumeData.coverUrl });
+            result.coverUrl    = volumeData.coverUrl;
+            coverFetchResult   = 'found';
+          }
+
+          // Metadati: aggiorna solo i campi ancora null nel DB
+          const metaUpdate: Partial<Pick<BookEntity, 'publisher' | 'publishedYear' | 'description' | 'pages'>> = {};
+
+          if (result.publisher === null && volumeData.publisher) {
+            metaUpdate.publisher = volumeData.publisher;
+            result.publisher     = volumeData.publisher;
+          }
+          if (result.publishedYear === null && volumeData.publishedDate) {
+            const yr = parsePublishedYear(volumeData.publishedDate);
+            if (yr !== null) {
+              metaUpdate.publishedYear = yr;
+              result.publishedYear     = yr;
+            }
+          }
+          if (result.description === null && volumeData.description) {
+            metaUpdate.description = volumeData.description;
+            result.description     = volumeData.description;
+          }
+          if (result.pages === null && volumeData.pageCount !== null) {
+            metaUpdate.pages = volumeData.pageCount;
+            result.pages     = volumeData.pageCount;
+          }
+
+          if (Object.keys(metaUpdate).length > 0) {
+            await ctx.db.getRepository(BookEntity).update(result.id, metaUpdate);
+          }
+        }
+
+        // Se shouldFetchCover ma la cover non è stata trovata via ISBN → marca come non trovata
+        // (il fallback title/author proverà subito sotto)
+        if (shouldFetchCover && coverFetchResult === 'not_attempted') {
+          coverFetchResult = 'not_found';
+        }
+      }
+
+      // ── Step 2: fallback cover title/author (se cover ancora mancante) ────────
+      // Usato quando: shouldFetchCover è true E la cover non è stata trovata al passo 1.
+      // Non ripassa isbn (già tentato sopra) — waterfall: titleEn → titleIt.
+      if (shouldFetchCover && !result.coverUrl) {
         try {
           const cover = await fetchCoverUrl({
             titleEn:    input.titleEn ?? result.titleEn,
             titleIt:    result.title,
             authorName: primaryAuthor,
-            isbn:       input.isbn ?? result.isbn ?? undefined,
+            // isbn omesso: già tentato in Step 1 tramite fetchVolumeDataByIsbn
           });
           if (cover) {
             await ctx.db.getRepository(BookEntity).update(result.id, { coverUrl: cover });
-            result.coverUrl = cover;
+            result.coverUrl  = cover;
             coverFetchResult = 'found';
           } else {
             coverFetchResult = 'not_found';
           }
         } catch (err) {
-          console.warn('[book.update] Cover fetch non riuscito:', err);
+          console.warn('[book.update] Cover fetch (title/author) non riuscito:', err);
           coverFetchResult = 'not_found';
         }
       }
