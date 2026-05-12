@@ -151,17 +151,25 @@ export const bookRouter = router({
       }
 
       // ── Full-text search ───────────────────────────────────────────────────
+      // Approccio ibrido fts_vector + pg_trgm:
+      //   1. fts_vector @@ plainto_tsquery — match semantico italiano su titolo
+      //      (peso A), sottotitolo (peso B) e descrizione (peso C) tramite la
+      //      colonna TSVECTOR generata; plainto_tsquery tollera input liberi.
+      //   2. ILIKE fallback — cattura query corte, acronimi e parole non
+      //      stemmizzate che plainto_tsquery potrebbe escludere come stop words.
+      //   3. similarity su author_fts.name — ricerca fuzzy sugli autori (gli
+      //      autori non sono inclusi in fts_vector).
       // Join raw su book_authors/authors (niente entity-relation nel QB leggero).
-      // Il match su autore usa join espliciti per non filtrare le relazioni
-      // idratate nel QB completo successivo.
       if (input.q) {
         lightQb
           .leftJoin('book_authors', 'ba_fts', 'ba_fts.book_id = book.id')
           .leftJoin('authors', 'author_fts', 'author_fts.id = ba_fts.author_id')
           .andWhere(
-            `(similarity(f_unaccent(book.title), f_unaccent(:q)) > 0.1
+            `(
+              book.fts_vector @@ plainto_tsquery('italian', f_unaccent(:q))
               OR f_unaccent(book.title) ILIKE :qLike
-              OR similarity(f_unaccent(author_fts.name), f_unaccent(:q)) > 0.2)`,
+              OR similarity(f_unaccent(author_fts.name), f_unaccent(:q)) > 0.2
+            )`,
             { q: input.q, qLike: `%${input.q}%` },
           );
       }
@@ -169,24 +177,40 @@ export const bookRouter = router({
       // ── Ordinamento ────────────────────────────────────────────────────────
       const dir = input.sortDir.toUpperCase() as 'ASC' | 'DESC';
 
-      if (input.sortBy === 'author') {
-        // Subquery correlata: autore primario per sort_order ASC.
-        // Semanticamente corretto anche con più autori per libro.
-        lightQb.orderBy(
-          `(SELECT a_s.name FROM book_authors ba_s
-            JOIN authors a_s ON a_s.id = ba_s.author_id
-            WHERE ba_s.book_id = book.id
-            ORDER BY ba_s.sort_order ASC LIMIT 1)`,
-          dir,
-        );
+      if (input.q) {
+        // Con query attiva: ordinamento per rilevanza FTS decrescente.
+        // ts_rank restituisce 0.0 per le righe che matchano solo via ILIKE o
+        // similarity autore (non matchano fts_vector) → appaiono in coda,
+        // ordinate per updated_at come tiebreaker.
+        // Il parametro :q è già bindato nel blocco andWhere precedente.
+        lightQb
+          .addSelect(
+            `ts_rank(book.fts_vector, plainto_tsquery('italian', f_unaccent(:q)))`,
+            'rank',
+          )
+          .orderBy('rank', 'DESC')
+          .addOrderBy('book.updated_at', 'DESC');
       } else {
-        const sortMap: Record<string, string> = {
-          title:     'book.title',
-          yearRead:  'book.year_read',
-          rating:    'book.rating',
-          createdAt: 'book.created_at',
-        };
-        lightQb.orderBy(sortMap[input.sortBy] ?? 'book.created_at', dir);
+        if (input.sortBy === 'author') {
+          // Subquery correlata: autore primario per sort_order ASC.
+          // Semanticamente corretto anche con più autori per libro.
+          lightQb.orderBy(
+            `(SELECT a_s.name FROM book_authors ba_s
+              JOIN authors a_s ON a_s.id = ba_s.author_id
+              WHERE ba_s.book_id = book.id
+              ORDER BY ba_s.sort_order ASC LIMIT 1)`,
+            dir,
+          );
+        } else {
+          const sortMap: Record<string, string> = {
+            title:     'book.title',
+            yearRead:  'book.year_read',
+            rating:    'book.rating',
+            createdAt: 'book.created_at',
+            updatedAt: 'book.updated_at',
+          };
+          lightQb.orderBy(sortMap[input.sortBy] ?? 'book.updated_at', dir);
+        }
       }
 
       // ── COUNT + IDs paginati ───────────────────────────────────────────────

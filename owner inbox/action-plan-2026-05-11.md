@@ -1,7 +1,7 @@
 # 🗺️ Scripta Manent — Piano d'Azione
 
 **Data:** 2026-05-11 | **Autori:** Gibson (Architect) + Dick (BA) + Shakespeare (DB)
-**Aggiornato:** 2026-05-12 | Fase 6 completata · ADR-002 rivisto · ADR-005 aggiunto
+**Aggiornato:** 2026-05-12 | Fase 6 ✅ · Fase 7 ✅ · Ricerca ibrida fts_vector + pg_trgm ✅ · Relevance sorting ✅
 
 ---
 
@@ -55,7 +55,8 @@
 | **4** | CSV Import | McCarthy | 3 | `tsx scripts/import-csv.ts` — libreria di Luciano nel DB | ✅ **COMPLETATA** |
 | **5** | Frontend Core | Ishiguro | 3 | Lista libri, form aggiunta/modifica, dettaglio — **app usabile end-to-end** ⭐ | ✅ **COMPLETATA** |
 | **6** | Search & Filters | Ishiguro | 5 | pg_trgm search (già nel backend), chip rimovibili, filtri tag/anno/stato, URL params, contatore TBR/Letti | ✅ **COMPLETATA** |
-| **7** | Cover Integration | McCarthy + Ishiguro | 5 | `title_en` field, Google Books service (waterfall en→it→null), campo form, display dettaglio | 🔨 **IN CORSO** |
+| **7** | Cover Integration | McCarthy + Ishiguro | 5 | `title_en` field, Google Books service (waterfall en→it→null), upload manuale cover, campo form, display dettaglio | ✅ **COMPLETATA** |
+| **7b** | Search Upgrade | McCarthy | 7 | Ricerca ibrida `fts_vector @@ plainto_tsquery('italian')` + `pg_trgm` autori + relevance sorting (`ts_rank DESC`) | ✅ **COMPLETATA** |
 | **8** | Polish | Ishiguro | 6+7 | Tag Manager, dark mode, skeleton loading, export CSV/JSON | ⏳ |
 
 **Primo deliverable usabile (thin vertical slice):** fine Fase 5
@@ -87,6 +88,29 @@
 |---|---|---|
 | R04 | Dati CSV sporchi non gestiti | Zod schema CSV definito prima dello script; report errori per riga |
 | R19 | Import bloccato se Google Books API down | Flag `--no-covers` rende import indipendente |
+
+---
+
+## Note tecniche — Fase 7 + 7b
+
+**Fase 7 — Cover Integration (McCarthy + Ishiguro):**
+
+- `004_AddTitleEn.ts` → colonna `title_en TEXT NULLABLE` su `books`
+- `google-books.service.ts` → waterfall `titleEn+autore → titleIt+autore → null`, timeout 5s
+- Upload manuale: `POST /api/upload/cover` (multipart, max 2MB, salva in `public/covers/{uuid}.ext`)
+- Fix `next/image`: `remotePatterns hostname: '**'` per accettare URL da qualsiasi dominio
+- Fix Zod: `coverUrl` union `z.string().url() | /^\/covers\//` per path locali
+- Ordinamento lista cambiato da `createdAt` a `updatedAt`
+- Script batch: `src/scripts/fetch-covers.ts` (flag `--dry-run`, `--verbose`, `--limit N`)
+- Script bulk: `src/scripts/update-title-en.ts` + `docs/title_en_map.csv` (295 mappature)
+
+**Fase 7b — Search Upgrade (McCarthy):**
+
+- Ricerca ibrida: `fts_vector @@ plainto_tsquery('italian', f_unaccent(:q))` per titoli/sottotitoli/descrizioni
+- Fallback `ILIKE` per query corte/acronimi/stop-word
+- `pg_trgm similarity()` mantenuto per autori (non presenti in `fts_vector`)
+- Relevance sorting: quando `input.q` presente → `ts_rank DESC` + `updated_at DESC` (tiebreaker)
+- Quando `input.q` assente → sort normale per `sortBy` dell'utente
 
 ---
 

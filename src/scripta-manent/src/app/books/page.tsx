@@ -136,7 +136,7 @@ function BooksPageInner() {
     tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
     yearReadFrom: status === 'read' && yearReadFrom !== '' ? yearReadFrom : undefined,
     yearReadTo: status === 'read' && yearReadTo !== '' ? yearReadTo : undefined,
-    sortBy: 'createdAt',
+    sortBy: 'updatedAt',
     sortDir: 'desc',
   });
 

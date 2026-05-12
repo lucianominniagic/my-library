@@ -13,7 +13,7 @@ export const BookFiltersSchema = z.object({
   yearReadFrom: z.number().int().optional(),
   yearReadTo:   z.number().int().optional(),
   status:       z.enum(['all', 'read', 'tbr']).default('all'),
-  sortBy:       z.enum(['title', 'author', 'yearRead', 'rating', 'createdAt']).default('createdAt'),
+  sortBy:       z.enum(['title', 'author', 'yearRead', 'rating', 'createdAt', 'updatedAt']).default('updatedAt'),
   sortDir:      z.enum(['asc', 'desc']).default('desc'),
 });
 
@@ -27,7 +27,7 @@ export const BookCreateSchema = z.object({
   language:      z.string().min(2).max(2).default('it'),
   pages:         z.number().int().min(1).optional(),
   description:   z.string().optional(),
-  coverUrl:      z.string().url().optional(),
+  coverUrl:      z.union([z.string().url(), z.string().regex(/^\/covers\//)]).optional(),
   yearRead:      z.number().int().min(1800).max(2200).optional(),
   rating:        z.number().int().min(1).max(5).optional(),
   notes:         z.string().optional(),

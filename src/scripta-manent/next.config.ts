@@ -17,9 +17,11 @@ const nextConfig: NextConfig = {
   ],
   images: {
     remotePatterns: [
+      // Allow any https host — needed for user-provided cover URLs
+      // (Google Books, Amazon, Goodreads, etc.)
       {
         protocol: 'https',
-        hostname: 'books.google.com',
+        hostname: '**',
       },
       {
         protocol: 'http',

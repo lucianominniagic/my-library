@@ -148,6 +148,9 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
   // ── Errors ────────────────────────────────────────────────────────────────────
   const [errors, setErrors] = useState<FormErrors>({});
 
+  // ── Cover upload state ────────────────────────────────────────────────────────
+  const [uploadingCover, setUploadingCover] = useState(false);
+
   // ── Pre-fill form when editing ────────────────────────────────────────────────
   useEffect(() => {
     if (open && book) {
@@ -193,6 +196,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
       setSelectedGenres([]);
     }
     setErrors({});
+    setUploadingCover(false);
     setAuthorInput('');
     setDebouncedAuthorInput('');
   }, [open, book]);
@@ -214,15 +218,45 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
       }
     }
     if (coverUrl.trim()) {
-      try {
-        new URL(coverUrl.trim());
-      } catch {
-        newErrors.coverUrl = 'URL non valido';
+      const val = coverUrl.trim();
+      // Accept relative paths (e.g. /covers/uuid.jpg from the upload endpoint)
+      // and reject strings that look like they should be full URLs but aren't.
+      if (!val.startsWith('/')) {
+        try {
+          new URL(val);
+        } catch {
+          newErrors.coverUrl = 'URL non valido';
+        }
       }
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  }
+
+  // ── Cover upload ──────────────────────────────────────────────────────────────
+  async function handleFileUpload(file: File) {
+    if (file.size > 2 * 1024 * 1024) {
+      setErrors((prev) => ({ ...prev, coverUrl: 'File troppo grande (max 2MB)' }));
+      return;
+    }
+    setUploadingCover(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/upload/cover', { method: 'POST', body: fd });
+      if (!res.ok) {
+        const e = await res.json() as { error?: string };
+        throw new Error(e.error ?? 'Upload fallito');
+      }
+      const { url } = await res.json() as { url: string };
+      setCoverUrl(url);
+      setErrors((prev) => ({ ...prev, coverUrl: undefined }));
+    } catch (err) {
+      setErrors((prev) => ({ ...prev, coverUrl: (err as Error).message }));
+    } finally {
+      setUploadingCover(false);
+    }
   }
 
   // ── Submit ────────────────────────────────────────────────────────────────────
@@ -565,15 +599,87 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
                   rows={3}
                 />
 
-                <TextField
-                  label="URL copertina"
-                  value={coverUrl}
-                  onChange={(e) => setCoverUrl(e.target.value)}
-                  fullWidth
-                  error={!!errors.coverUrl}
-                  helperText={errors.coverUrl}
-                  placeholder="https://…"
-                />
+                {/* ── Copertina ────────────────────────────────────────────────── */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {/* Preview thumbnail + action buttons */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    {/* Thumbnail / placeholder */}
+                    <Box
+                      sx={{
+                        width: 60,
+                        height: 80,
+                        borderRadius: 1,
+                        overflow: 'hidden',
+                        flexShrink: 0,
+                        bgcolor: 'grey.200',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                      }}
+                    >
+                      {coverUrl ? (
+                        <img
+                          src={coverUrl}
+                          alt="Copertina"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        />
+                      ) : (
+                        <Typography sx={{ fontSize: 28, lineHeight: 1 }} aria-hidden="true">
+                          📚
+                        </Typography>
+                      )}
+                    </Box>
+
+                    {/* Upload button */}
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      component="label"
+                      disabled={uploadingCover}
+                      startIcon={uploadingCover ? <CircularProgress size={16} color="inherit" /> : undefined}
+                    >
+                      {uploadingCover ? 'Caricamento…' : 'Carica immagine'}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        hidden
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void handleFileUpload(file);
+                          // reset so re-selecting the same file fires onChange again
+                          e.target.value = '';
+                        }}
+                      />
+                    </Button>
+
+                    {/* Remove button — only when there's a cover */}
+                    {coverUrl && (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="error"
+                        disabled={uploadingCover}
+                        onClick={() => setCoverUrl('')}
+                      >
+                        ❌ Rimuovi
+                      </Button>
+                    )}
+                  </Box>
+
+                  {/* URL text field — still allows manual paste */}
+                  <TextField
+                    label="URL copertina"
+                    value={coverUrl}
+                    onChange={(e) => setCoverUrl(e.target.value)}
+                    fullWidth
+                    size="small"
+                    error={!!errors.coverUrl}
+                    helperText={errors.coverUrl}
+                    placeholder="https://…"
+                  />
+                </Box>
               </Box>
             </AccordionDetails>
           </Accordion>
