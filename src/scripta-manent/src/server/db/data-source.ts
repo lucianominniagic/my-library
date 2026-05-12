@@ -27,6 +27,7 @@ import {
 import { InitialSchema1710000000001 } from './migrations/001_InitialSchema';
 import { SeedGenres1710000000002 } from './migrations/002_SeedGenres';
 import { AddPasswordHash1710000000003 } from './migrations/003_AddPasswordHash';
+import { AddTitleEn1710000000004 } from './migrations/004_AddTitleEn';
 
 const entities = [
   UserEntity,
@@ -42,7 +43,7 @@ const entities = [
   BookEntity,
 ];
 
-const migrations = [InitialSchema1710000000001, SeedGenres1710000000002, AddPasswordHash1710000000003];
+const migrations = [InitialSchema1710000000001, SeedGenres1710000000002, AddPasswordHash1710000000003, AddTitleEn1710000000004];
 
 /**
  * AppDataSource — singleton module-level.

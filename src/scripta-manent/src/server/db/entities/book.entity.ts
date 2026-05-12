@@ -48,6 +48,9 @@ export class BookEntity {
   @Column({ type: 'text', nullable: true })
   description!: string | null;
 
+  @Column({ name: 'title_en', type: 'text', nullable: true })
+  titleEn!: string | null;
+
   @Column({ name: 'cover_url', type: 'text', nullable: true })
   coverUrl!: string | null;
 

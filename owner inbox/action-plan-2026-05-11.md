@@ -1,6 +1,7 @@
 # 🗺️ Scripta Manent — Piano d'Azione
 
 **Data:** 2026-05-11 | **Autori:** Gibson (Architect) + Dick (BA) + Shakespeare (DB)
+**Aggiornato:** 2026-05-12 | Fase 6 completata · ADR-002 rivisto · ADR-005 aggiunto
 
 ---
 
@@ -12,12 +13,23 @@
 - `year_read IS NULL` = TBR | `year_read NOT NULL` = Letto
 - Evolution path: migration semplice e non distruttiva se in futuro servono reletture
 
-### ADR-002 · Google Books API — Cover URL
+### ADR-002 · Google Books API — Cover URL *(rivisto 2026-05-12)*
 **Decisione:** fetch **server-side** al salvataggio, URL salvata in `cover_url TEXT`.
-- Waterfall: ISBN lookup → titolo+autore fallback → '' (placeholder)
+- ~~ISBN lookup~~ **eliminato**: Luciano non dispone degli ISBN
+- **Waterfall:** `title_en + autore` → `title_it + autore` → `null` (placeholder UI)
+- Nessun `langRestrict`: evita di escludere libri italiani con metadati incompleti in Google Books
 - `https://` forzato (Google restituisce `http://`)
-- Import CSV: flag `--no-covers` per disabilitare fetch (evita blocco se API down)
-- 200ms delay tra richieste nell'import (rate limit)
+- Timeout 5s per richiesta (`AbortSignal.timeout(5000)`)
+- Errori API non bloccano il salvataggio (REQ-31)
+- Import CSV: flag `--no-covers` ancora supportato per disabilitare fetch
+
+### ADR-005 · Campo `title_en` su Book *(aggiunto 2026-05-12)*
+**Decisione:** aggiunto campo `title_en TEXT NULLABLE` alla tabella `books` (migration `004_AddTitleEn`).
+- **Rationale:** i libri italiani hanno spesso titoli diversi in inglese; Google Books ha copertura migliore con titoli in inglese
+- Campo opzionale nel form — nessuna validazione required
+- Helper text nel form: *"Aiuta a trovare la copertina su Google Books"*
+- Se compilato, viene usato come primo tentativo nel waterfall cover
+- `BookDetailDto` espone `titleEn: string | null`
 
 ### ADR-003 · Auth — next-auth v5 Credentials + JWT
 **Decisione:** `CredentialsProvider` (email + password), sessione JWT 30 giorni.
@@ -42,8 +54,8 @@
 | **3** | Core Backend | McCarthy | 2 | tRPC CRUD: book / author / genre / tag — testabili via Postman/client | ✅ **COMPLETATA** |
 | **4** | CSV Import | McCarthy | 3 | `tsx scripts/import-csv.ts` — libreria di Luciano nel DB | ✅ **COMPLETATA** |
 | **5** | Frontend Core | Ishiguro | 3 | Lista libri, form aggiunta/modifica, dettaglio — **app usabile end-to-end** ⭐ | ✅ **COMPLETATA** |
-| **6** | Search & Filters | McCarthy + Ishiguro | 5 | pg_trgm search, filtri per genere/tag/stato, URL params | ⏳ |
-| **7** | Cover Integration | McCarthy + Ishiguro | 5 | Google Books API, cover in lista e dettaglio | ⏳ |
+| **6** | Search & Filters | Ishiguro | 5 | pg_trgm search (già nel backend), chip rimovibili, filtri tag/anno/stato, URL params, contatore TBR/Letti | ✅ **COMPLETATA** |
+| **7** | Cover Integration | McCarthy + Ishiguro | 5 | `title_en` field, Google Books service (waterfall en→it→null), campo form, display dettaglio | 🔨 **IN CORSO** |
 | **8** | Polish | Ishiguro | 6+7 | Tag Manager, dark mode, skeleton loading, export CSV/JSON | ⏳ |
 
 **Primo deliverable usabile (thin vertical slice):** fine Fase 5

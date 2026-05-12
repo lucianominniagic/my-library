@@ -229,12 +229,20 @@ export default function BookDetailPage({ params }: BookDetailPageProps) {
       )}
 
       {/* ── Details ──────────────────────────────────────────────────────── */}
-      {(book.isbn || book.publisher || book.publishedYear || book.pages || book.description) && (
+      {(book.isbn || book.publisher || book.publishedYear || book.pages || book.description || book.titleEn) && (
         <>
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
             Dettagli
           </Typography>
           <Grid container spacing={2} sx={{ mb: 2 }}>
+            {book.titleEn && (
+              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                  Titolo in inglese
+                </Typography>
+                <Typography variant="body2">{book.titleEn}</Typography>
+              </Grid>
+            )}
             {book.isbn && (
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>

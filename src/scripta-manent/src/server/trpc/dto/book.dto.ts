@@ -40,6 +40,7 @@ export type BookDetailDto = BookListItemDto & {
   pages: number | null;
   description: string | null;
   notes: string | null;
+  titleEn: string | null;
   updatedAt: string;
 };
 

@@ -92,6 +92,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
   // ── Form state ──────────────────────────────────────────────────────────────
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
+  const [titleEn, setTitleEn] = useState('');
   const [yearRead, setYearRead] = useState('');
   const [rating, setRating] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
@@ -152,6 +153,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
     if (open && book) {
       setTitle(book.title);
       setSubtitle(book.subtitle ?? '');
+      setTitleEn(book.titleEn ?? '');
       setYearRead(book.yearRead != null ? String(book.yearRead) : '');
       setRating(book.rating);
       setNotes(book.notes ?? '');
@@ -176,6 +178,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
       // Reset for create
       setTitle('');
       setSubtitle('');
+      setTitleEn('');
       setYearRead('');
       setRating(null);
       setNotes('');
@@ -230,6 +233,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
     const payload = {
       title: title.trim(),
       subtitle: subtitle.trim() || undefined,
+      titleEn: titleEn.trim() || undefined,
       isbn: isbn.trim() || undefined,
       publisher: publisher.trim() || undefined,
       publishedYear: publishedYear.trim() ? Number(publishedYear) : undefined,
@@ -333,6 +337,16 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
             value={subtitle}
             onChange={(e) => setSubtitle(e.target.value)}
             fullWidth
+          />
+
+          {/* ── Titolo in inglese ─────────────────────────────────────────────── */}
+          <TextField
+            label="Titolo in inglese (per ricerca copertina)"
+            value={titleEn}
+            onChange={(e) => setTitleEn(e.target.value)}
+            fullWidth
+            size="small"
+            helperText="Aiuta a trovare la copertina su Google Books"
           />
 
           {/* ── Autori ───────────────────────────────────────────────────────── */}

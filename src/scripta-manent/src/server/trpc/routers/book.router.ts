@@ -14,6 +14,7 @@ import {
   type BookDetailDto,
   type PaginatedResult,
 } from '../dto/book.dto';
+import { fetchCoverUrl } from '../services/google-books.service';
 
 // ─────────────────────────── mapping helpers ─────────────────────────────────
 
@@ -54,6 +55,7 @@ function mapToListItem(book: BookEntity): BookListItemDto {
 function mapToDetail(book: BookEntity): BookDetailDto {
   return {
     ...mapToListItem(book),
+    titleEn:       book.titleEn,
     isbn:          book.isbn,
     publisher:     book.publisher,
     publishedYear: book.publishedYear,
@@ -283,17 +285,18 @@ export const bookRouter = router({
         const book     = bookRepo.create({
           userId,
           title:         input.title,
-          subtitle:      input.subtitle   ?? null,
-          isbn:          input.isbn        ?? null,
-          publisher:     input.publisher   ?? null,
+          titleEn:       input.titleEn       ?? null,
+          subtitle:      input.subtitle      ?? null,
+          isbn:          input.isbn          ?? null,
+          publisher:     input.publisher     ?? null,
           publishedYear: input.publishedYear ?? null,
           language:      input.language,
-          pages:         input.pages       ?? null,
-          description:   input.description ?? null,
-          coverUrl:      input.coverUrl    ?? null,
-          yearRead:      input.yearRead    ?? null,
-          rating:        input.rating      ?? null,
-          notes:         input.notes       ?? null,
+          pages:         input.pages         ?? null,
+          description:   input.description   ?? null,
+          coverUrl:      input.coverUrl      ?? null,
+          yearRead:      input.yearRead      ?? null,
+          rating:        input.rating        ?? null,
+          notes:         input.notes         ?? null,
           genres,
           tags,
         });
@@ -323,6 +326,25 @@ export const bookRouter = router({
 
         return full;
       });
+
+      // ── Cover fetch (fuori dalla transazione — non bloccante) ──────────────
+      // REQ-31: mancanza cover non blocca il salvataggio.
+      if (!result.coverUrl) {
+        const primaryAuthor = result.bookAuthors?.[0]?.author?.name ?? '';
+        try {
+          const cover = await fetchCoverUrl({
+            titleEn:    input.titleEn,
+            titleIt:    input.title,
+            authorName: primaryAuthor,
+          });
+          if (cover) {
+            await ctx.db.getRepository(BookEntity).update(result.id, { coverUrl: cover });
+            result.coverUrl = cover;
+          }
+        } catch (err) {
+          console.warn('[book.create] Cover fetch non riuscito:', err);
+        }
+      }
 
       return mapToDetail(result);
     }),
@@ -355,6 +377,7 @@ export const bookRouter = router({
 
         // 2. Aggiorna i campi scalari (solo quelli esplicitamente forniti)
         if (input.title         !== undefined) book.title         = input.title;
+        if (input.titleEn       !== undefined) book.titleEn       = input.titleEn       ?? null;
         if (input.subtitle      !== undefined) book.subtitle      = input.subtitle      ?? null;
         if (input.isbn          !== undefined) book.isbn          = input.isbn          ?? null;
         if (input.publisher     !== undefined) book.publisher     = input.publisher     ?? null;
@@ -409,6 +432,25 @@ export const bookRouter = router({
           },
         });
       });
+
+      // ── Cover fetch (fuori dalla transazione — non bloccante) ──────────────
+      // REQ-31: mancanza cover non blocca l'aggiornamento.
+      if (!result.coverUrl && input.coverUrl === undefined) {
+        const primaryAuthor = result.bookAuthors?.[0]?.author?.name ?? '';
+        try {
+          const cover = await fetchCoverUrl({
+            titleEn:    input.titleEn ?? result.titleEn,
+            titleIt:    result.title,
+            authorName: primaryAuthor,
+          });
+          if (cover) {
+            await ctx.db.getRepository(BookEntity).update(result.id, { coverUrl: cover });
+            result.coverUrl = cover;
+          }
+        } catch (err) {
+          console.warn('[book.update] Cover fetch non riuscito:', err);
+        }
+      }
 
       return mapToDetail(result);
     }),

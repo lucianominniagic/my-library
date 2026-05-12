@@ -19,6 +19,7 @@ export const BookFiltersSchema = z.object({
 
 export const BookCreateSchema = z.object({
   title:         z.string().min(1).max(500),
+  titleEn:       z.string().max(500).optional(),
   subtitle:      z.string().max(500).optional(),
   isbn:          z.string().optional(),
   publisher:     z.string().optional(),

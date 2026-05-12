@@ -8,6 +8,7 @@ import {
   Chip,
   CircularProgress,
   Container,
+  Divider,
   FormControl,
   Grid,
   InputAdornment,
@@ -28,6 +29,18 @@ import { type BookDetailDto, type BookListItemDto } from '@/server/trpc/dto/book
 import { BookList } from '@/components/books/BookList';
 import { BookFormDialog } from '@/components/books/BookFormDialog';
 import { DeleteConfirmDialog } from '@/components/books/DeleteConfirmDialog';
+import { ActiveFilterChips } from '@/components/books/ActiveFilterChips';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Parse a URL param as an integer, returning '' when absent/invalid */
+function parseYear(raw: string | null): number | '' {
+  if (!raw) return '';
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : '';
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Skeleton for loading state
@@ -70,6 +83,15 @@ function BooksPageInner() {
   const [selectedGenreIds, setSelectedGenreIds] = useState<string[]>(
     searchParams.get('genre') ? searchParams.get('genre')!.split(',').filter(Boolean) : [],
   );
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
+    searchParams.get('tag') ? searchParams.get('tag')!.split(',').filter(Boolean) : [],
+  );
+  const [yearReadFrom, setYearReadFrom] = useState<number | ''>(
+    parseYear(searchParams.get('yearFrom')),
+  );
+  const [yearReadTo, setYearReadTo] = useState<number | ''>(
+    parseYear(searchParams.get('yearTo')),
+  );
   const [page, setPage] = useState(Number(searchParams.get('page') ?? '1'));
 
   // ── Dialog state ──────────────────────────────────────────────────────────
@@ -92,13 +114,17 @@ function BooksPageInner() {
     if (debouncedQ) params.set('q', debouncedQ);
     if (status !== 'all') params.set('status', status);
     if (selectedGenreIds.length > 0) params.set('genre', selectedGenreIds.join(','));
+    if (selectedTagIds.length > 0) params.set('tag', selectedTagIds.join(','));
+    if (status === 'read' && yearReadFrom !== '') params.set('yearFrom', String(yearReadFrom));
+    if (status === 'read' && yearReadTo !== '') params.set('yearTo', String(yearReadTo));
     if (page > 1) params.set('page', String(page));
     const qs = params.toString();
     router.replace(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false });
-  }, [debouncedQ, status, selectedGenreIds, page, router, pathname]);
+  }, [debouncedQ, status, selectedGenreIds, selectedTagIds, yearReadFrom, yearReadTo, page, router, pathname]);
 
-  // ── Genre options ──────────────────────────────────────────────────────────
+  // ── Genre & Tag options ────────────────────────────────────────────────────
   const { data: genreOptions = [] } = trpc.genre.list.useQuery();
+  const { data: tagOptions = [] } = trpc.tag.list.useQuery();
 
   // ── Books query ────────────────────────────────────────────────────────────
   const { data, isLoading } = trpc.book.list.useQuery({
@@ -107,9 +133,22 @@ function BooksPageInner() {
     q: debouncedQ || undefined,
     status,
     genreIds: selectedGenreIds.length > 0 ? selectedGenreIds : undefined,
+    tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+    yearReadFrom: status === 'read' && yearReadFrom !== '' ? yearReadFrom : undefined,
+    yearReadTo: status === 'read' && yearReadTo !== '' ? yearReadTo : undefined,
     sortBy: 'createdAt',
     sortDir: 'desc',
   });
+
+  // ── Stat queries for TBR/Read counter (REQ-61) ────────────────────────────
+  const { data: readStats } = trpc.book.list.useQuery(
+    { status: 'read', limit: 1, page: 1 },
+    { staleTime: 60_000 },
+  );
+  const { data: tbrStats } = trpc.book.list.useQuery(
+    { status: 'tbr', limit: 1, page: 1 },
+    { staleTime: 60_000 },
+  );
 
   // ── Book byId for edit ─────────────────────────────────────────────────────
   const [fetchingBookId, setFetchingBookId] = useState<string | null>(null);
@@ -149,6 +188,11 @@ function BooksPageInner() {
     if (newStatus) {
       setStatus(newStatus);
       setPage(1);
+      // Clear year range when leaving 'read' — those fields are only active for read books
+      if (newStatus !== 'read') {
+        setYearReadFrom('');
+        setYearReadTo('');
+      }
     }
   }
 
@@ -162,6 +206,16 @@ function BooksPageInner() {
     setEditingBook(undefined);
   }
 
+  function handleClearAllFilters() {
+    setQ('');
+    setDebouncedQ('');
+    setSelectedGenreIds([]);
+    setSelectedTagIds([]);
+    setYearReadFrom('');
+    setYearReadTo('');
+    setPage(1);
+  }
+
   const books = data?.data ?? [];
   const total = data?.total ?? 0;
   const totalPages = data?.totalPages ?? 1;
@@ -169,10 +223,34 @@ function BooksPageInner() {
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
       {/* ── Header ───────────────────────────────────────────────────────── */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
-          La mia libreria
-        </Typography>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          mb: 2.5,
+          flexWrap: 'wrap',
+          gap: 2,
+        }}
+      >
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
+            La mia libreria
+          </Typography>
+          {/* ── REQ-61: TBR / Read summary ─────────────────────────────── */}
+          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+            {readStats !== undefined && tbrStats !== undefined ? (
+              <>
+                📚 <strong>{readStats.total}</strong> letti
+                &nbsp;·&nbsp;
+                📋 <strong>{tbrStats.total}</strong> da leggere
+              </>
+            ) : (
+              <Skeleton width={160} height={18} sx={{ display: 'inline-block' }} />
+            )}
+          </Typography>
+        </Box>
+
         <Button
           variant="contained"
           startIcon={<AddIcon />}
@@ -183,7 +261,7 @@ function BooksPageInner() {
       </Box>
 
       {/* ── Filters ──────────────────────────────────────────────────────── */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
         {/* Search */}
         <TextField
           value={q}
@@ -244,7 +322,122 @@ function BooksPageInner() {
             ))}
           </Select>
         </FormControl>
+
+        {/* REQ-12: Tag filter */}
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel>Tag</InputLabel>
+          <Select
+            multiple
+            value={selectedTagIds}
+            onChange={(e) => {
+              setSelectedTagIds(e.target.value as string[]);
+              setPage(1);
+            }}
+            label="Tag"
+            renderValue={(selected) => (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.25 }}>
+                {(selected as string[]).map((id) => {
+                  const tag = tagOptions.find((t) => t.id === id);
+                  return tag ? (
+                    <Chip key={id} label={`#${tag.name}`} size="small" sx={{ height: 18, fontSize: '0.7rem' }} />
+                  ) : null;
+                })}
+              </Box>
+            )}
+          >
+            {tagOptions.length === 0 ? (
+              <MenuItem disabled>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  Nessun tag disponibile
+                </Typography>
+              </MenuItem>
+            ) : (
+              tagOptions.map((t) => (
+                <MenuItem key={t.id} value={t.id}>
+                  {t.color && (
+                    <Box
+                      component="span"
+                      sx={{
+                        display: 'inline-block',
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        bgcolor: t.color,
+                        mr: 1,
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+                  {t.name}
+                </MenuItem>
+              ))
+            )}
+          </Select>
+        </FormControl>
       </Box>
+
+      {/* REQ-13: Year range filter — only when status === 'read' */}
+      {status === 'read' && (
+        <Box sx={{ display: 'flex', gap: 1.5, mb: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mr: 0.5 }}>
+            Anno lettura:
+          </Typography>
+          <TextField
+            label="Dal"
+            type="number"
+            size="small"
+            value={yearReadFrom}
+            onChange={(e) => {
+              const v = e.target.value === '' ? '' : Number(e.target.value);
+              setYearReadFrom(v as number | '');
+              setPage(1);
+            }}
+            sx={{ width: 100 }}
+            slotProps={{ htmlInput: { min: 1900, max: new Date().getFullYear(), step: 1 } }}
+          />
+          <Divider orientation="vertical" flexItem />
+          <TextField
+            label="Al"
+            type="number"
+            size="small"
+            value={yearReadTo}
+            onChange={(e) => {
+              const v = e.target.value === '' ? '' : Number(e.target.value);
+              setYearReadTo(v as number | '');
+              setPage(1);
+            }}
+            sx={{ width: 100 }}
+            slotProps={{ htmlInput: { min: 1900, max: new Date().getFullYear(), step: 1 } }}
+          />
+        </Box>
+      )}
+
+      {/* ── REQ-16: Active filter chips ───────────────────────────────────── */}
+      <ActiveFilterChips
+        q={debouncedQ}
+        genreIds={selectedGenreIds}
+        tagIds={selectedTagIds}
+        yearReadFrom={status === 'read' ? yearReadFrom : ''}
+        yearReadTo={status === 'read' ? yearReadTo : ''}
+        genreOptions={genreOptions}
+        tagOptions={tagOptions}
+        onRemoveQ={() => {
+          setQ('');
+          setDebouncedQ('');
+          setPage(1);
+        }}
+        onRemoveGenre={(id) => {
+          setSelectedGenreIds((prev) => prev.filter((g) => g !== id));
+          setPage(1);
+        }}
+        onRemoveTag={(id) => {
+          setSelectedTagIds((prev) => prev.filter((t) => t !== id));
+          setPage(1);
+        }}
+        onRemoveYearFrom={() => { setYearReadFrom(''); setPage(1); }}
+        onRemoveYearTo={() => { setYearReadTo(''); setPage(1); }}
+        onClearAll={handleClearAllFilters}
+      />
 
       {/* ── Count ────────────────────────────────────────────────────────── */}
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
