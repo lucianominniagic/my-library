@@ -8,7 +8,6 @@ import {
   Chip,
   CircularProgress,
   Container,
-  Divider,
   FormControl,
   Grid,
   InputAdornment,
@@ -87,11 +86,8 @@ function BooksPageInner() {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
     searchParams.get('tag') ? searchParams.get('tag')!.split(',').filter(Boolean) : [],
   );
-  const [yearReadFrom, setYearReadFrom] = useState<number | ''>(
+  const [selectedYear, setSelectedYear] = useState<number | ''>(
     parseYear(searchParams.get('yearFrom')),
-  );
-  const [yearReadTo, setYearReadTo] = useState<number | ''>(
-    parseYear(searchParams.get('yearTo')),
   );
   const [page, setPage] = useState(Number(searchParams.get('page') ?? '1'));
 
@@ -116,16 +112,19 @@ function BooksPageInner() {
     if (status !== 'all') params.set('status', status);
     if (selectedGenreIds.length > 0) params.set('genre', selectedGenreIds.join(','));
     if (selectedTagIds.length > 0) params.set('tag', selectedTagIds.join(','));
-    if (status === 'read' && yearReadFrom !== '') params.set('yearFrom', String(yearReadFrom));
-    if (status === 'read' && yearReadTo !== '') params.set('yearTo', String(yearReadTo));
+    if (status !== 'tbr' && selectedYear !== '') {
+      params.set('yearFrom', String(selectedYear));
+      params.set('yearTo', String(selectedYear));
+    }
     if (page > 1) params.set('page', String(page));
     const qs = params.toString();
     router.replace(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false });
-  }, [debouncedQ, status, selectedGenreIds, selectedTagIds, yearReadFrom, yearReadTo, page, router, pathname]);
+  }, [debouncedQ, status, selectedGenreIds, selectedTagIds, selectedYear, page, router, pathname]);
 
   // ── Genre & Tag options ────────────────────────────────────────────────────
   const { data: genreOptions = [] } = trpc.genre.list.useQuery();
   const { data: tagOptions = [] } = trpc.tag.list.useQuery();
+  const { data: readYears = [] } = trpc.book.listReadYears.useQuery();
 
   // ── Books query ────────────────────────────────────────────────────────────
   const { data, isLoading } = trpc.book.list.useQuery({
@@ -135,8 +134,8 @@ function BooksPageInner() {
     status,
     genreIds: selectedGenreIds.length > 0 ? selectedGenreIds : undefined,
     tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
-    yearReadFrom: status === 'read' && yearReadFrom !== '' ? yearReadFrom : undefined,
-    yearReadTo: status === 'read' && yearReadTo !== '' ? yearReadTo : undefined,
+    yearReadFrom: status !== 'tbr' && selectedYear !== '' ? selectedYear : undefined,
+    yearReadTo: status !== 'tbr' && selectedYear !== '' ? selectedYear : undefined,
     sortBy: 'updatedAt',
     sortDir: 'desc',
   });
@@ -189,10 +188,9 @@ function BooksPageInner() {
     if (newStatus) {
       setStatus(newStatus);
       setPage(1);
-      // Clear year range when leaving 'read' — those fields are only active for read books
-      if (newStatus !== 'read') {
-        setYearReadFrom('');
-        setYearReadTo('');
+      // Clear year filter when switching to 'tbr' — TBR books have no yearRead
+      if (newStatus === 'tbr') {
+        setSelectedYear('');
       }
     }
   }
@@ -212,8 +210,7 @@ function BooksPageInner() {
     setDebouncedQ('');
     setSelectedGenreIds([]);
     setSelectedTagIds([]);
-    setYearReadFrom('');
-    setYearReadTo('');
+    setSelectedYear('');
     setPage(1);
   }
 
@@ -386,51 +383,37 @@ function BooksPageInner() {
             )}
           </Select>
         </FormControl>
-      </Box>
 
-      {/* REQ-13: Year range filter — only when status === 'read' */}
-      {status === 'read' && (
-        <Box sx={{ display: 'flex', gap: 1.5, mb: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Typography variant="body2" sx={{ color: 'text.secondary', mr: 0.5 }}>
-            Anno lettura:
-          </Typography>
-          <TextField
-            label="Dal"
-            type="number"
-            size="small"
-            value={yearReadFrom}
-            onChange={(e) => {
-              const v = e.target.value === '' ? '' : Number(e.target.value);
-              setYearReadFrom(v as number | '');
-              setPage(1);
-            }}
-            sx={{ width: 100 }}
-            slotProps={{ htmlInput: { min: 1900, max: new Date().getFullYear(), step: 1 } }}
-          />
-          <Divider orientation="vertical" flexItem />
-          <TextField
-            label="Al"
-            type="number"
-            size="small"
-            value={yearReadTo}
-            onChange={(e) => {
-              const v = e.target.value === '' ? '' : Number(e.target.value);
-              setYearReadTo(v as number | '');
-              setPage(1);
-            }}
-            sx={{ width: 100 }}
-            slotProps={{ htmlInput: { min: 1900, max: new Date().getFullYear(), step: 1 } }}
-          />
-        </Box>
-      )}
+        {/* Anno lettura — Select con anni dal DB (nascosto per TBR) */}
+        {status !== 'tbr' && (
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel>Anno lettura</InputLabel>
+            <Select
+              value={selectedYear}
+              label="Anno lettura"
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedYear(val as number | '');
+                setPage(1);
+              }}
+            >
+              <MenuItem value="">Tutti gli anni</MenuItem>
+              {readYears.map((year) => (
+                <MenuItem key={year} value={year}>
+                  {year}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+      </Box>
 
       {/* ── REQ-16: Active filter chips ───────────────────────────────────── */}
       <ActiveFilterChips
         q={debouncedQ}
         genreIds={selectedGenreIds}
         tagIds={selectedTagIds}
-        yearReadFrom={status === 'read' ? yearReadFrom : ''}
-        yearReadTo={status === 'read' ? yearReadTo : ''}
+        selectedYear={status !== 'tbr' ? selectedYear : ''}
         genreOptions={genreOptions}
         tagOptions={tagOptions}
         onRemoveQ={() => {
@@ -446,8 +429,7 @@ function BooksPageInner() {
           setSelectedTagIds((prev) => prev.filter((t) => t !== id));
           setPage(1);
         }}
-        onRemoveYearFrom={() => { setYearReadFrom(''); setPage(1); }}
-        onRemoveYearTo={() => { setYearReadTo(''); setPage(1); }}
+        onRemoveYear={() => { setSelectedYear(''); setPage(1); }}
         onClearAll={handleClearAllFilters}
       />
 

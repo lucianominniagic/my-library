@@ -17,15 +17,13 @@ export interface ActiveFilterChipsProps {
   q: string;
   genreIds: string[];
   tagIds: string[];
-  yearReadFrom: number | '';
-  yearReadTo: number | '';
+  selectedYear: number | '';
   genreOptions: GenreOption[];
   tagOptions: TagOption[];
   onRemoveQ: () => void;
   onRemoveGenre: (id: string) => void;
   onRemoveTag: (id: string) => void;
-  onRemoveYearFrom: () => void;
-  onRemoveYearTo: () => void;
+  onRemoveYear: () => void;
   onClearAll: () => void;
 }
 
@@ -33,23 +31,20 @@ export function ActiveFilterChips({
   q,
   genreIds,
   tagIds,
-  yearReadFrom,
-  yearReadTo,
+  selectedYear,
   genreOptions,
   tagOptions,
   onRemoveQ,
   onRemoveGenre,
   onRemoveTag,
-  onRemoveYearFrom,
-  onRemoveYearTo,
+  onRemoveYear,
   onClearAll,
 }: ActiveFilterChipsProps) {
   const hasFilters =
     !!q ||
     genreIds.length > 0 ||
     tagIds.length > 0 ||
-    yearReadFrom !== '' ||
-    yearReadTo !== '';
+    selectedYear !== '';
 
   if (!hasFilters) return null;
 
@@ -111,23 +106,14 @@ export function ActiveFilterChips({
         ) : null;
       })}
 
-      {/* Year range chips */}
-      {yearReadFrom !== '' && (
+      {/* Year chip */}
+      {selectedYear !== '' && (
         <Chip
           role="listitem"
-          label={`Dal ${yearReadFrom}`}
-          onDelete={onRemoveYearFrom}
+          label={`📅 Anno: ${selectedYear}`}
+          onDelete={onRemoveYear}
           size="small"
-          aria-label={`Rimuovi anno da: ${yearReadFrom}`}
-        />
-      )}
-      {yearReadTo !== '' && (
-        <Chip
-          role="listitem"
-          label={`Al ${yearReadTo}`}
-          onDelete={onRemoveYearTo}
-          size="small"
-          aria-label={`Rimuovi anno a: ${yearReadTo}`}
+          aria-label={`Rimuovi filtro anno: ${selectedYear}`}
         />
       )}
 

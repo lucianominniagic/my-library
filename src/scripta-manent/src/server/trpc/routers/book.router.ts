@@ -538,6 +538,24 @@ export const bookRouter = router({
     }),
 
   /**
+   * Lista degli anni di lettura distinti per l'utente corrente, ordinati DESC.
+   * Usato per popolare i filtri/selettori anno nella UI.
+   */
+  listReadYears: protectedProcedure
+    .query(async ({ ctx }) => {
+      const userId = ctx.session.user.id as string;
+      const rows = await ctx.db
+        .getRepository(BookEntity)
+        .createQueryBuilder('book')
+        .select('DISTINCT book.year_read', 'year')
+        .where('book.user_id = :userId', { userId })
+        .andWhere('book.year_read IS NOT NULL')
+        .orderBy('book.year_read', 'DESC')
+        .getRawMany<{ year: number }>();
+      return rows.map(r => Number(r.year));
+    }),
+
+  /**
    * Elimina un libro (CASCADE pulisce book_authors, book_genres, book_tags).
    */
   delete: protectedProcedure
