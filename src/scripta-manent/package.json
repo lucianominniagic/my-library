@@ -20,6 +20,8 @@
     "import:csv:dry": "node --require ./node_modules/tsx/dist/cjs/index.cjs src/scripts/import-csv.ts --dry-run --verbose",
     "update:title-en": "node --require ./node_modules/tsx/dist/cjs/index.cjs src/scripts/update-title-en.ts",
     "update:title-en:dry": "node --require ./node_modules/tsx/dist/cjs/index.cjs src/scripts/update-title-en.ts --dry-run --verbose",
+    "fetch:covers": "node --require ./node_modules/tsx/dist/cjs/index.cjs src/scripts/fetch-covers.ts",
+    "fetch:covers:dry": "node --require ./node_modules/tsx/dist/cjs/index.cjs src/scripts/fetch-covers.ts --dry-run --verbose",
     "prepare": "husky"
   },
   "lint-staged": {
