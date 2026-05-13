@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import fs from 'fs';
-import path from 'path';
 import { randomUUID } from 'crypto';
+import { initializeDBConnection } from '@/server/db/data-source';
+import { BookCoverEntity } from '@/server/db/entities';
 
-const ALLOWED_MIME_TYPES: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-  'image/gif': 'gif',
-};
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+]);
 
 const MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
 
@@ -35,10 +35,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   // — Validate MIME type —
-  const ext = ALLOWED_MIME_TYPES[file.type];
-  if (!ext) {
+  if (!ALLOWED_MIME_TYPES.has(file.type)) {
     return NextResponse.json(
-      { error: `Unsupported file type: ${file.type}. Accepted: ${Object.keys(ALLOWED_MIME_TYPES).join(', ')}` },
+      {
+        error: `Unsupported file type: ${file.type}. Accepted: ${[...ALLOWED_MIME_TYPES].join(', ')}`,
+      },
       { status: 400 },
     );
   }
@@ -51,19 +52,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // — Persist to public/covers/ —
-  const coversDir = path.join(process.cwd(), 'public', 'covers');
-  const filename = `${randomUUID()}.${ext}`;
-  const filePath = path.join(coversDir, filename);
-
+  // — Store binary in the database —
+  let coverId: string;
   try {
-    fs.mkdirSync(coversDir, { recursive: true });
     const buffer = Buffer.from(await file.arrayBuffer());
-    fs.writeFileSync(filePath, buffer);
+    const db     = await initializeDBConnection();
+    const repo   = db.getRepository(BookCoverEntity);
+
+    coverId = randomUUID();
+    const cover = repo.create({
+      id:       coverId,
+      bookId:   null,          // orphan — linked when book is saved via tRPC
+      mimeType: file.type,
+      data:     buffer,
+    });
+    await repo.save(cover);
   } catch (err) {
-    console.error('[upload/cover] Failed to write file:', err);
+    console.error('[upload/cover] Failed to store cover in database:', err);
     return NextResponse.json({ error: 'Failed to save file' }, { status: 500 });
   }
 
-  return NextResponse.json({ url: `/covers/${filename}` }, { status: 200 });
+  return NextResponse.json({ url: `/api/covers/${coverId}` }, { status: 200 });
 }

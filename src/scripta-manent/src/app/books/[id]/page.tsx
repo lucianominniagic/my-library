@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, use, useEffect } from 'react';
 import NextLink from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -35,6 +35,11 @@ export default function BookDetailPage({ params }: BookDetailPageProps) {
 
   const [formOpen, setFormOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [coverError, setCoverError] = useState(false);
+
+  useEffect(() => {
+    setCoverError(false);
+  }, [book?.coverUrl]);
 
   const deleteMutation = trpc.book.delete.useMutation({
     onSuccess: async () => {
@@ -82,6 +87,7 @@ export default function BookDetailPage({ params }: BookDetailPageProps) {
 
   const isRead = book.yearRead != null;
   const authorLabel = book.authors.map((a) => a.name).join(', ');
+  const isDbCover = book.coverUrl?.startsWith('/api/covers/');
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -109,13 +115,15 @@ export default function BookDetailPage({ params }: BookDetailPageProps) {
               bgcolor: 'grey.200',
             }}
           >
-            {book.coverUrl ? (
+            {book.coverUrl && !coverError ? (
               <Image
                 src={book.coverUrl}
                 alt={`Copertina di ${book.title}`}
                 fill
                 style={{ objectFit: 'cover' }}
                 sizes="(max-width: 600px) 100vw, 300px"
+                unoptimized={isDbCover}
+                onError={() => setCoverError(true)}
               />
             ) : (
               <Box

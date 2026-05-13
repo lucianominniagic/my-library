@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Accordion,
   AccordionDetails,
@@ -19,6 +19,7 @@ import {
   FormControl,
   FormHelperText,
   InputLabel,
+  LinearProgress,
   MenuItem,
   Select,
   Snackbar,
@@ -172,6 +173,27 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
 
   // ── Cover upload state ────────────────────────────────────────────────────────
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const uploadTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Drive a fake "fast-then-slow" progress animation while uploading
+  useEffect(() => {
+    if (uploadingCover) {
+      setUploadProgress(0);
+      uploadTimerRef.current = setInterval(() => {
+        setUploadProgress((prev) => {
+          const next = prev + (85 - prev) * 0.06;
+          return next >= 85 ? 85 : next;
+        });
+      }, 50);
+    }
+    return () => {
+      if (uploadTimerRef.current) {
+        clearInterval(uploadTimerRef.current);
+        uploadTimerRef.current = null;
+      }
+    };
+  }, [uploadingCover]);
 
   // ── Cover fetch snackbar state ────────────────────────────────────────────────
   const [coverSnackbar, setCoverSnackbar] = useState<{ open: boolean; result: 'found' | 'not_found' } | null>(null);
@@ -224,6 +246,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
     }
     setErrors({});
     setUploadingCover(false);
+    setUploadProgress(0);
     setAuthorInput('');
     setDebouncedAuthorInput('');
     setTagInputValue('');
@@ -283,7 +306,14 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
     } catch (err) {
       setErrors((prev) => ({ ...prev, coverUrl: (err as Error).message }));
     } finally {
+      // Stop the fake-progress timer, snap to 100%, then hide after 300 ms
+      if (uploadTimerRef.current) {
+        clearInterval(uploadTimerRef.current);
+        uploadTimerRef.current = null;
+      }
+      setUploadProgress(100);
       setUploadingCover(false);
+      setTimeout(() => setUploadProgress(0), 300);
     }
   }
 
@@ -820,6 +850,16 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
                       </Button>
                     )}
                   </Box>
+
+                  {/* Upload progress bar — visible during upload and 300 ms completion flash */}
+                  {uploadProgress > 0 && (
+                    <LinearProgress
+                      variant="determinate"
+                      value={uploadProgress}
+                      color="primary"
+                      sx={{ borderRadius: 1, width: '100%' }}
+                    />
+                  )}
 
                   {/* URL text field — still allows manual paste */}
                   <TextField

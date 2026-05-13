@@ -20,6 +20,7 @@ import {
   BookGenreEntity,
   BookTagEntity,
   BookEntity,
+  BookCoverEntity,
 } from '@/server/db/entities';
 
 // Migrazioni importate esplicitamente — evita il glob `*.ts` che Turbopack
@@ -28,6 +29,7 @@ import { InitialSchema1710000000001 } from './migrations/001_InitialSchema';
 import { SeedGenres1710000000002 } from './migrations/002_SeedGenres';
 import { AddPasswordHash1710000000003 } from './migrations/003_AddPasswordHash';
 import { AddTitleEn1710000000004 } from './migrations/004_AddTitleEn';
+import { AddBookCovers1710000000005 } from './migrations/005_AddBookCovers';
 
 const entities = [
   UserEntity,
@@ -41,9 +43,10 @@ const entities = [
   BookGenreEntity,
   BookTagEntity,
   BookEntity,
+  BookCoverEntity,
 ];
 
-const migrations = [InitialSchema1710000000001, SeedGenres1710000000002, AddPasswordHash1710000000003, AddTitleEn1710000000004];
+const migrations = [InitialSchema1710000000001, SeedGenres1710000000002, AddPasswordHash1710000000003, AddTitleEn1710000000004, AddBookCovers1710000000005];
 
 /**
  * AppDataSource — singleton module-level.
@@ -65,14 +68,26 @@ export const AppDataSource = new DataSource({
 });
 
 /**
- * Inizializza la connessione al DB (lazy, idempotente).
+ * In-flight promise guard — ensures AppDataSource.initialize() is called at
+ * most once, even when multiple concurrent requests race before the DataSource
+ * is ready.  Without this, two callers passing the !isInitialized check at the
+ * same tick both invoke initialize() concurrently, causing pg to execute a
+ * second query on an already-busy client and triggering:
+ *   DeprecationWarning: Calling client.query() when the client is already
+ *   executing a query is deprecated and will be removed in pg@9.0
+ */
+let _initPromise: Promise<DataSource> | null = null;
+
+/**
+ * Inizializza la connessione al DB (lazy, idempotente, race-safe).
  * Usato da createContext() tRPC e da qualsiasi server-side code.
  */
 export async function initializeDBConnection(): Promise<DataSource> {
-  if (!AppDataSource.isInitialized) {
-    await AppDataSource.initialize();
+  if (AppDataSource.isInitialized) return AppDataSource;
+  if (!_initPromise) {
+    _initPromise = AppDataSource.initialize().then(() => AppDataSource);
   }
-  return AppDataSource;
+  return _initPromise;
 }
 
 /** @deprecated Usa initializeDBConnection() */

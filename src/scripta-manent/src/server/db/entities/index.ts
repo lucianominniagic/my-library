@@ -9,3 +9,4 @@ export { BookAuthorEntity } from './book-author.entity';
 export { BookGenreEntity } from './book-genre.entity';
 export { BookTagEntity } from './book-tag.entity';
 export { BookEntity } from './book.entity';
+export { BookCoverEntity } from './book-cover.entity';

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Box, Card, CardActionArea, CardContent, Chip, Tooltip, Typography } from '@mui/material';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -24,12 +25,19 @@ interface BookCardProps {
 
 export function BookCard({ book, onEdit, onDelete }: BookCardProps) {
   const router = useRouter();
+  const [coverError, setCoverError] = useState(false);
+
+  useEffect(() => {
+    setCoverError(false);
+  }, [book.coverUrl]);
+
   const primaryAuthor = book.authors[0];
   const authorLabel = book.authors
     .map((a) => a.name)
     .join(', ');
   const isRead = book.yearRead != null;
   const visibleGenres = book.genres.slice(0, 2);
+  const isDbCover = book.coverUrl?.startsWith('/api/covers/');
 
   const handleClick = (e: React.MouseEvent) => {
     // Prevent card click when action buttons used from parent
@@ -64,13 +72,15 @@ export function BookCard({ book, onEdit, onDelete }: BookCardProps) {
             flexShrink: 0,
           }}
         >
-          {book.coverUrl ? (
+          {book.coverUrl && !coverError ? (
             <Image
               src={book.coverUrl}
               alt={`Copertina di ${book.title}`}
               fill
               style={{ objectFit: 'cover' }}
               sizes="(max-width: 600px) 100vw, (max-width: 900px) 50vw, 25vw"
+              unoptimized={isDbCover}
+              onError={() => setCoverError(true)}
             />
           ) : (
             <Box

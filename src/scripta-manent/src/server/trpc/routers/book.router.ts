@@ -4,7 +4,7 @@ import fs from 'fs/promises';
 import { TRPCError } from '@trpc/server';
 import { In } from 'typeorm';
 import { router, protectedProcedure } from '../init';
-import { BookEntity, GenreEntity, TagEntity, BookAuthorEntity } from '@/server/db/entities';
+import { BookEntity, GenreEntity, TagEntity, BookAuthorEntity, BookCoverEntity } from '@/server/db/entities';
 import {
   PaginationSchema,
   BookFiltersSchema,
@@ -79,6 +79,21 @@ function mapToDetail(book: BookEntity): BookDetailDto {
     notes:         book.notes,
     updatedAt:     book.updatedAt.toISOString(),
   };
+}
+
+// ─────────────────────────── cover helpers ───────────────────────────────────
+
+const API_COVERS_PREFIX = '/api/covers/';
+
+/**
+ * Extracts the cover UUID from a /api/covers/<uuid> URL.
+ * Returns null if the URL doesn't match the pattern.
+ */
+function extractDbCoverId(url: string | null | undefined): string | null {
+  if (!url?.startsWith(API_COVERS_PREFIX)) return null;
+  const id = url.slice(API_COVERS_PREFIX.length);
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return UUID_RE.test(id) ? id : null;
 }
 
 // ─────────────────────────── router ──────────────────────────────────────────
@@ -374,6 +389,17 @@ export const bookRouter = router({
         );
         await baRepo.save(bookAuthors);
 
+        // 4b. Lega la cover al libro (se proveniente dal DB cover store)
+        const newCoverId = extractDbCoverId(input.coverUrl);
+        if (newCoverId) {
+          await em.getRepository(BookCoverEntity)
+            .createQueryBuilder()
+            .update()
+            .set({ bookId: saved.id })
+            .where('id = :id', { id: newCoverId })
+            .execute();
+        }
+
         // 5. Ricarica con tutte le relazioni per il DTO finale
         const full = await em.getRepository(BookEntity).findOneOrFail({
           where:     { id: saved.id },
@@ -446,11 +472,25 @@ export const bookRouter = router({
         if (input.pages         !== undefined) book.pages         = input.pages         ?? null;
         if (input.description   !== undefined) book.description   = input.description   ?? null;
         if (input.coverUrl !== undefined) {
+          const oldCoverUrl = book.coverUrl;
+
           // Se era un file locale e la URL cambia (o viene rimossa), elimina il vecchio file
-          if (book.coverUrl?.startsWith('/covers/') && input.coverUrl !== book.coverUrl) {
-            const oldPath = path.join(process.cwd(), 'public', book.coverUrl);
+          if (oldCoverUrl?.startsWith('/covers/') && input.coverUrl !== oldCoverUrl) {
+            const oldPath = path.join(process.cwd(), 'public', oldCoverUrl);
             await fs.unlink(oldPath).catch(() => {}); // silenzioso se già eliminato
           }
+
+          // Se era una cover DB e la URL cambia (o viene rimossa), elimina il vecchio record
+          const oldDbCoverId = extractDbCoverId(oldCoverUrl);
+          if (oldDbCoverId && input.coverUrl !== oldCoverUrl) {
+            await em.getRepository(BookCoverEntity)
+              .createQueryBuilder()
+              .delete()
+              .where('id = :id', { id: oldDbCoverId })
+              .execute()
+              .catch(() => {}); // silenzioso se già eliminato
+          }
+
           // null = rimozione esplicita; stringa = nuova URL; undefined già escluso dal guard
           book.coverUrl = input.coverUrl ?? null;
         }
@@ -473,6 +513,18 @@ export const bookRouter = router({
         }
 
         await bookRepo.save(book);
+
+        // 4b. Lega la nuova cover DB al libro (link book_id se cover appena caricata)
+        const newDbCoverId = extractDbCoverId(book.coverUrl);
+        if (newDbCoverId) {
+          await em.getRepository(BookCoverEntity)
+            .createQueryBuilder()
+            .update()
+            .set({ bookId: book.id })
+            .where('id = :id', { id: newDbCoverId })
+            .execute()
+            .catch(() => {});
+        }
 
         // 5. Aggiorna BookAuthorEntity (delete + re-insert) se forniti
         if (input.authors !== undefined) {
