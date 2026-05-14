@@ -239,9 +239,9 @@ function BooksPageInner() {
           <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
             {readStats !== undefined && tbrStats !== undefined ? (
               <>
-                📚 <strong>{readStats.total}</strong> letti
+                📚 <strong>{readStats.total}</strong>&nbsp;letti
                 &nbsp;·&nbsp;
-                📋 <strong>{tbrStats.total}</strong> da leggere
+                📋 <strong>{tbrStats.total}</strong>&nbsp;da leggere
               </>
             ) : (
               <Skeleton width={160} height={18} sx={{ display: 'inline-block' }} />

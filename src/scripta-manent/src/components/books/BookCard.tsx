@@ -54,8 +54,11 @@ export function BookCard({ book, onEdit, onDelete }: BookCardProps) {
         display: 'flex',
         flexDirection: 'column',
         position: 'relative', // needed for absolute relevance chip
-        transition: 'box-shadow 0.2s',
-        '&:hover': { boxShadow: 4 },
+        transition: 'transform 0.15s ease, border-color 0.15s ease',
+        '&:hover': { 
+          transform: 'scale(1.04)',
+          boxShadow: 4
+        },
       }}
     >
       <CardActionArea
