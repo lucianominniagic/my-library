@@ -512,13 +512,15 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
                     </li>
                   );
                 }
+                // At this point option is AuthorSearchOption; cast to satisfy TS narrowing
+                const searchOpt = option as AuthorSearchOption;
                 return (
-                  <li {...props} key={option.id}>
+                  <li {...props} key={searchOpt.id}>
                     <Box>
-                      <Typography variant="body2">{option.name}</Typography>
-                      {option.nationality && (
+                      <Typography variant="body2">{searchOpt.name}</Typography>
+                      {searchOpt.nationality && (
                         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                          {option.nationality}
+                          {searchOpt.nationality}
                         </Typography>
                       )}
                     </Box>
@@ -546,8 +548,9 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
                   createAndAddAuthor(value.name);
                   return;
                 }
-                // Normal author result selected
-                addAuthor(value as AuthorSearchOption);
+                // Normal author result selected; normalise nationality (undefined → null) to satisfy addAuthor's signature
+                const searchOpt = value as AuthorSearchOption;
+                addAuthor({ ...searchOpt, nationality: searchOpt.nationality ?? null });
               }}
               noOptionsText="Nessun risultato"
             />
