@@ -40,6 +40,12 @@ import { StarRating } from './StarRating';
 
 type AuthorRole = 'author' | 'editor' | 'translator' | 'illustrator' | 'other';
 
+/** A real author result returned by the search API. */
+type AuthorSearchOption = { id: string; name: string; nationality?: string | null; aliases?: string[] | null };
+/** Sentinel option that renders a "Crea autore" entry at the bottom of the list. */
+type CreateAuthorOption = { __type: 'create'; name: string };
+type AuthorOption = AuthorSearchOption | CreateAuthorOption;
+
 interface TagOption {
   id: string;
   name: string;
@@ -471,26 +477,54 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
 
           {/* ── Autori ───────────────────────────────────────────────────────── */}
           <Box>
-            <Autocomplete
+            <Autocomplete<AuthorOption, false, false, true>
               freeSolo
               inputValue={authorInput}
               onInputChange={(_, value) => setAuthorInput(value)}
-              options={authorResults ?? []}
-              getOptionLabel={(opt) =>
-                typeof opt === 'string' ? opt : opt.name
+              options={
+                // Append the "Crea autore" sentinel whenever the user has typed something.
+                // Server-side search already filters results, so we skip client-side filtering
+                // and just pass options through unchanged.
+                [
+                  ...(authorResults ?? []) as AuthorSearchOption[],
+                  ...(debouncedAuthorInput.trim().length >= 1
+                    ? [{ __type: 'create' as const, name: debouncedAuthorInput }]
+                    : []),
+                ] as AuthorOption[]
               }
-              renderOption={(props, option) => (
-                <li {...props} key={option.id}>
-                  <Box>
-                    <Typography variant="body2">{option.name}</Typography>
-                    {option.nationality && (
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        {option.nationality}
+              // Bypass MUI's built-in client-side filter — results come from the server
+              // and we always want the sentinel to survive.
+              filterOptions={(options) => options}
+              getOptionLabel={(opt) => {
+                if (typeof opt === 'string') return opt;
+                return opt.name;
+              }}
+              renderOption={(props, option) => {
+                if (typeof option === 'string') {
+                  return <li {...props} key="__freesolo__">{option}</li>;
+                }
+                if ('__type' in option && option.__type === 'create') {
+                  return (
+                    <li {...props} key="__create__">
+                      <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'primary.main' }}>
+                        + Crea autore &ldquo;{option.name}&rdquo;
                       </Typography>
-                    )}
-                  </Box>
-                </li>
-              )}
+                    </li>
+                  );
+                }
+                return (
+                  <li {...props} key={option.id}>
+                    <Box>
+                      <Typography variant="body2">{option.name}</Typography>
+                      {option.nationality && (
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          {option.nationality}
+                        </Typography>
+                      )}
+                    </Box>
+                  </li>
+                );
+              }}
               loading={authorsFetching}
               renderInput={({ ...params }) => (
                 <TextField
@@ -501,23 +535,21 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
                 />
               )}
               onChange={(_, value) => {
-                if (value && typeof value !== 'string') {
-                  addAuthor(value);
+                if (!value) return;
+                // freeSolo: user pressed Enter on raw typed text
+                if (typeof value === 'string') {
+                  if (value.trim()) createAndAddAuthor(value.trim());
+                  return;
                 }
+                // Sentinel "Crea autore" option selected
+                if ('__type' in value && value.__type === 'create') {
+                  createAndAddAuthor(value.name);
+                  return;
+                }
+                // Normal author result selected
+                addAuthor(value as AuthorSearchOption);
               }}
-              noOptionsText={
-                debouncedAuthorInput.trim().length >= 1 ? (
-                  <Button
-                    size="small"
-                    onClick={() => createAndAddAuthor(debouncedAuthorInput)}
-                    disabled={createAuthorMutation.isPending}
-                  >
-                    + Crea autore &ldquo;{debouncedAuthorInput}&rdquo;
-                  </Button>
-                ) : (
-                  'Inizia a digitare…'
-                )
-              }
+              noOptionsText="Nessun risultato"
             />
 
             {/* Selected author chips */}
