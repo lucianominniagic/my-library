@@ -64,9 +64,11 @@ export const AppDataSource = new DataSource({
   password:    process.env.DB_PASSWORD,
   database:    process.env.DB_NAME,
   synchronize: false,
-  logging:     false, //process.env.NODE_ENV === 'development',
+  logging:     process.env.DB_LOGGING === 'true',
+  poolSize:    Number(process.env.DB_POOL_SIZE ?? 10),
   entities,
   migrations,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
 /**
