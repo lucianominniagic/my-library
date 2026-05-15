@@ -3,7 +3,9 @@ import * as dotenv from 'dotenv';
 import { DataSource } from 'typeorm';
 
 // Carica .env.local per la TypeORM CLI (Next.js lo carica autonomamente a runtime)
-dotenv.config({ path: '.env.local', override: false });
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config({ path: ".env.local" });
+}
 
 // Importa tutte le entities dal barrel — stesso path usato dai router (@/server/db/entities)
 // Questo garantisce che Turbopack/Node.js usi la STESSA istanza delle classi entity
