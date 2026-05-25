@@ -12,7 +12,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { UserEntity } from './user.entity';
-import { BookAuthorEntity } from './book-author.entity';
+import type { BookAuthorEntity } from './book-author.entity';
 import { GenreEntity } from './genre.entity';
 import { TagEntity } from './tag.entity';
 
@@ -95,10 +95,18 @@ export class BookEntity {
   @JoinColumn({ name: 'user_id' })
   user!: UserEntity;
 
-  @OneToMany(() => BookAuthorEntity, (ba: BookAuthorEntity) => ba.book, {
-    eager: false,
-    cascade: ['insert', 'update'],
-  })
+  @OneToMany(
+    () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { BookAuthorEntity } = require('./book-author.entity') as typeof import('./book-author.entity');
+      return BookAuthorEntity;
+    },
+    (ba: BookAuthorEntity) => ba.book,
+    {
+      eager: false,
+      cascade: ['insert', 'update'],
+    }
+  )
   bookAuthors!: BookAuthorEntity[];
 
   @ManyToMany(() => GenreEntity, (genre) => genre.books, { eager: false })
