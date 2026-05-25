@@ -58,11 +58,11 @@ const migrations = [InitialSchema1710000000001, SeedGenres1710000000002, AddPass
  */
 export const AppDataSource = new DataSource({
   type:        'postgres',
-  host:        process.env.DB_HOST     ?? 'localhost',
+  host:        process.env.POSTGRES_HOST     ?? 'localhost',
   port:        Number(process.env.DB_PORT ?? 5432),
-  username:    process.env.DB_USER,
-  password:    process.env.DB_PASSWORD,
-  database:    process.env.DB_NAME,
+  username:    process.env.POSTGRES_USER,
+  password:    process.env.POSTGRES_PASSWORD,
+  database:    process.env.POSTGRES_DATABASE,
   synchronize: false,
   logging:     process.env.DB_LOGGING === 'true',
   poolSize:    Number(process.env.DB_POOL_SIZE ?? 10),

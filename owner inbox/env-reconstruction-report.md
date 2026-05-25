@@ -24,11 +24,11 @@
 
 | Variabile     | Default | Obbligatoria | Descrizione                                      |
 |---------------|---------|:------------:|--------------------------------------------------|
-| `DB_HOST`     | `localhost` | No       | Hostname del server PostgreSQL                   |
+| `POSTGRES_HOST`     | `localhost` | No       | Hostname del server PostgreSQL                   |
 | `DB_PORT`     | `5432`  | No           | Porta TCP di PostgreSQL                          |
-| `DB_USER`     | —       | **Sì**       | Username del DB                                  |
-| `DB_PASSWORD` | —       | **Sì**       | Password del DB                                  |
-| `DB_NAME`     | —       | **Sì**       | Nome del database                                |
+| `POSTGRES_USER`     | —       | **Sì**       | Username del DB                                  |
+| `POSTGRES_PASSWORD` | —       | **Sì**       | Password del DB                                  |
+| `POSTGRES_DATABASE`     | —       | **Sì**       | Nome del database                                |
 
 > ⚠️ **ATTENZIONE — Gap critico**: il codice usa le 5 variabili granulari `DB_*`
 > ma il `.env.example` documenta solo `DATABASE_URL`.
@@ -74,7 +74,7 @@
 
 | Variabile nel `.env.example` | Trovata nel codice? | Note                                                                          |
 |-----------------------------|:-------------------:|-------------------------------------------------------------------------------|
-| `DATABASE_URL`              | ❌ NO               | **Obsoleta / gap di documentazione** — il codice usa `DB_HOST/PORT/USER/PASSWORD/NAME` |
+| `DATABASE_URL`              | ❌ NO               | **Obsoleta / gap di documentazione** — il codice usa `POSTGRES_HOST/PORT/USER/PASSWORD/NAME` |
 | `NEXTAUTH_URL`              | ✅ sì (implicita)   | Letta automaticamente da NextAuth                                              |
 | `NEXTAUTH_SECRET`           | ✅ sì (implicita)   | Letta automaticamente da NextAuth                                              |
 | `ADMIN_EMAIL`               | ✅ sì               | `seed-user.ts`, `import-csv.ts`                                               |
@@ -95,11 +95,11 @@ DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/scripta_manent
 
 Ma `src/server/db/data-source.ts` configura TypeORM con:
 ```ts
-host:     process.env.DB_HOST     ?? 'localhost',
+host:     process.env.POSTGRES_HOST     ?? 'localhost',
 port:     Number(process.env.DB_PORT ?? 5432),
-username: process.env.DB_USER,
-password: process.env.DB_PASSWORD,
-database: process.env.DB_NAME,
+username: process.env.POSTGRES_USER,
+password: process.env.POSTGRES_PASSWORD,
+database: process.env.POSTGRES_DATABASE,
 ```
 
 **`DATABASE_URL` non viene mai parsata né usata.** Il `.env.example` va allineato con la realtà del codice, oppure andrebbe aggiunto un parser esplicito. Per ora: usa le 5 variabili `DB_*`.
@@ -123,11 +123,11 @@ Il service `google-books.service.ts` chiama l'API pubblica senza autenticazione 
 # ── Database PostgreSQL (TypeORM AppDataSource) ───────────────────────────────
 # Crea il DB con: createdb scripta_manent
 # oppure: psql -c "CREATE DATABASE scripta_manent;"
-DB_HOST=localhost
+POSTGRES_HOST=localhost
 DB_PORT=5432
-DB_USER=your-postgres-username
-DB_PASSWORD=your-postgres-password
-DB_NAME=scripta_manent
+POSTGRES_USER=your-postgres-username
+POSTGRES_PASSWORD=your-postgres-password
+POSTGRES_DATABASE=scripta_manent
 
 # ── NextAuth ──────────────────────────────────────────────────────────────────
 # Genera NEXTAUTH_SECRET con: openssl rand -base64 32
@@ -154,7 +154,7 @@ ADMIN_NAME=Luciano
 ## 6. Checklist per il ripristino
 
 - [ ] Creare `.env.local` nella root di `src/scripta-manent/` usando il template sopra
-- [ ] Compilare `DB_USER`, `DB_PASSWORD` con le credenziali PostgreSQL locali
+- [ ] Compilare `POSTGRES_USER`, `POSTGRES_PASSWORD` con le credenziali PostgreSQL locali
 - [ ] Verificare che il database `scripta_manent` esista: `psql -c "\l" | grep scripta`
 - [ ] Generare `NEXTAUTH_SECRET`: `openssl rand -base64 32` (oppure PowerShell: `[Convert]::ToBase64String((1..32 | % { Get-Random -Max 256 }))`)
 - [ ] Impostare `ADMIN_EMAIL` e `ADMIN_PASSWORD` per lo script di seed
@@ -166,7 +166,7 @@ ADMIN_NAME=Luciano
 
 ## 7. Raccomandazione — allineare `.env.example`
 
-Il `.env.example` attuale è **parzialmente obsoleto** (documenta `DATABASE_URL` e `GOOGLE_BOOKS_API_KEY` non usate dal codice, non documenta `DB_HOST/PORT/USER/PASSWORD/NAME`). Si raccomanda di aggiornarlo per farlo coincidere con il template al punto 5.
+Il `.env.example` attuale è **parzialmente obsoleto** (documenta `DATABASE_URL` e `GOOGLE_BOOKS_API_KEY` non usate dal codice, non documenta `POSTGRES_HOST/PORT/USER/PASSWORD/NAME`). Si raccomanda di aggiornarlo per farlo coincidere con il template al punto 5.
 
 ```bash
 # Comando suggerito (da eseguire dalla root del progetto):
