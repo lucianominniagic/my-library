@@ -97,9 +97,11 @@ export class BookEntity {
 
   @OneToMany(
     () => {
+      // require() via il barrel garantisce la STESSA istanza di classe usata
+      // da data-source.ts e dai router — evita EntityMetadataNotFoundError.
+      // Il lazy require() evita il problema circular-dep al momento del caricamento.
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { BookAuthorEntity } = require('./book-author.entity') as typeof import('./book-author.entity');
-      return BookAuthorEntity;
+      return (require('@/server/db/entities') as typeof import('@/server/db/entities')).BookAuthorEntity;
     },
     (ba: BookAuthorEntity) => ba.book,
     {

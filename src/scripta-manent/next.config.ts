@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
   // unico e la corretta registrazione dei decoratori/metadata.
   serverExternalPackages: ['typeorm', 'pg', 'pg-native', 'reflect-metadata'],
 
+  // Disabilita la minificazione server-side per rendere affidabile la
+  // risoluzione dei decorator TypeORM. Con la minificazione attiva,
+  // i nomi delle classi vengono mangled (es. BookEntity → s) e TypeORM
+  // non riesce a trovare i metadata registrati → EntityMetadataNotFoundError.
+  experimental: {
+    serverMinification: false,
+  },
+
   transpilePackages: [
     "@mui/material",
     "@mui/icons-material",
