@@ -9,7 +9,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { UserEntity } from './user.entity';
-import type { BookEntity } from './book.entity';
+import { BookEntity } from './book.entity';
 
 @Entity('tags')
 export class TagEntity {
@@ -35,6 +35,6 @@ export class TagEntity {
   @JoinColumn({ name: 'user_id' })
   user!: UserEntity;
 
-  @ManyToMany('BookEntity', (book: BookEntity) => book.tags, { eager: false })
+  @ManyToMany(() => BookEntity, (book: BookEntity) => book.tags, { eager: false })
   books!: BookEntity[];
 }

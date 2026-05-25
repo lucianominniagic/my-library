@@ -12,7 +12,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { UserEntity } from './user.entity';
-import type { BookAuthorEntity } from './book-author.entity';
+import { BookAuthorEntity } from './book-author.entity';
 import { GenreEntity } from './genre.entity';
 import { TagEntity } from './tag.entity';
 
@@ -95,7 +95,7 @@ export class BookEntity {
   @JoinColumn({ name: 'user_id' })
   user!: UserEntity;
 
-  @OneToMany('BookAuthorEntity', (ba: BookAuthorEntity) => ba.book, {
+  @OneToMany(() => BookAuthorEntity, (ba: BookAuthorEntity) => ba.book, {
     eager: false,
     cascade: ['insert', 'update'],
   })
