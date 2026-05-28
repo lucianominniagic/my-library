@@ -1,3 +1,4 @@
 tools/node_modules
 src/scripta-manent/public/covers
 src/scripta-manent/.env.prod
+backup-db
