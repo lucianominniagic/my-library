@@ -11,8 +11,9 @@ import {
   JoinTable,
   JoinColumn,
 } from 'typeorm';
+import type { Relation } from 'typeorm';
 import { UserEntity } from './user.entity';
-import type { BookAuthorEntity } from './book-author.entity';
+import { BookAuthorEntity } from './book-author.entity';
 import { GenreEntity } from './genre.entity';
 import { TagEntity } from './tag.entity';
 
@@ -93,13 +94,13 @@ export class BookEntity {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'user_id' })
-  user!: UserEntity;
+  user!: Relation<UserEntity>;
 
-  @OneToMany('BookAuthorEntity', (ba: BookAuthorEntity) => ba.book, {
+  @OneToMany(() => BookAuthorEntity, (ba) => ba.book, {
     eager: false,
     cascade: ['insert', 'update'],
   })
-  bookAuthors!: BookAuthorEntity[];
+  bookAuthors!: Relation<BookAuthorEntity[]>;
 
   @ManyToMany(() => GenreEntity, (genre) => genre.books, { eager: false })
   @JoinTable({
@@ -107,7 +108,7 @@ export class BookEntity {
     joinColumn: { name: 'book_id' },
     inverseJoinColumn: { name: 'genre_id' },
   })
-  genres!: GenreEntity[];
+  genres!: Relation<GenreEntity[]>;
 
   @ManyToMany(() => TagEntity, (tag) => tag.books, { eager: false })
   @JoinTable({
@@ -115,5 +116,5 @@ export class BookEntity {
     joinColumn: { name: 'book_id' },
     inverseJoinColumn: { name: 'tag_id' },
   })
-  tags!: TagEntity[];
+  tags!: Relation<TagEntity[]>;
 }

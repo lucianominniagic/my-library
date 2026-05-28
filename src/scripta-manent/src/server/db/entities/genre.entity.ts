@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { Entity, PrimaryGeneratedColumn, Column, ManyToMany } from 'typeorm';
-import type { BookEntity } from './book.entity';
+import type { Relation } from 'typeorm';
+import { BookEntity } from './book.entity';
 
 @Entity('genres')
 export class GenreEntity {
@@ -16,6 +17,6 @@ export class GenreEntity {
   @Column({ name: 'sort_order', type: 'smallint', default: 0 })
   sortOrder!: number;
 
-  @ManyToMany('BookEntity', (book: BookEntity) => book.genres, { eager: false })
-  books!: BookEntity[];
+  @ManyToMany(() => BookEntity, (book) => book.genres, { eager: false })
+  books!: Relation<BookEntity[]>;
 }

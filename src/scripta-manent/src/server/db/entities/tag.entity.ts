@@ -8,8 +8,9 @@ import {
   ManyToMany,
   JoinColumn,
 } from 'typeorm';
+import type { Relation } from 'typeorm';
 import { UserEntity } from './user.entity';
-import type { BookEntity } from './book.entity';
+import { BookEntity } from './book.entity';
 
 @Entity('tags')
 export class TagEntity {
@@ -33,8 +34,8 @@ export class TagEntity {
 
   @ManyToOne(() => UserEntity, { eager: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
-  user!: UserEntity;
+  user!: Relation<UserEntity>;
 
-  @ManyToMany('BookEntity', (book: BookEntity) => book.tags, { eager: false })
-  books!: BookEntity[];
+  @ManyToMany(() => BookEntity, (book) => book.tags, { eager: false })
+  books!: Relation<BookEntity[]>;
 }

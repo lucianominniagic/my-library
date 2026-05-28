@@ -6,6 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
+import type { Relation } from 'typeorm';
 import { UserEntity } from './user.entity';
 
 @Entity('accounts')
@@ -48,5 +49,5 @@ export class AccountEntity {
 
   @ManyToOne(() => UserEntity, { eager: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
-  user!: UserEntity;
+  user!: Relation<UserEntity>;
 }

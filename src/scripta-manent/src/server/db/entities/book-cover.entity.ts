@@ -7,6 +7,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
+import type { Relation } from 'typeorm';
 import { BookEntity } from './book.entity';
 
 /**
@@ -36,5 +37,5 @@ export class BookCoverEntity {
 
   @ManyToOne(() => BookEntity, { eager: false, onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'book_id' })
-  book?: BookEntity;
+  book?: Relation<BookEntity>;
 }
