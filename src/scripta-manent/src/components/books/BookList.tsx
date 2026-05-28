@@ -36,7 +36,7 @@ export function BookList({ books, onEdit, onDelete }: BookListProps) {
   return (
     <Grid container spacing={3}>
       {books.map((book) => (
-        <Grid key={book.id} size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+        <Grid key={book.id} size={{ xs: 6, sm: 6, md: 4, lg: 2 }}>
           <BookCard
             book={book}
             onEdit={() => onEdit(book.id)}

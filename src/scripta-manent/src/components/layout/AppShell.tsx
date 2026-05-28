@@ -33,7 +33,6 @@ import { useThemeMode } from '@/lib/theme-provider';
 const NAV_LINKS = [
   { label: 'Libreria', href: '/books' },
   { label: 'Tag', href: '/tags' },
-  { label: 'Impostazioni', href: '/settings' },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
