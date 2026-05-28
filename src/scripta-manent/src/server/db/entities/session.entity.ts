@@ -6,6 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
+import type { Relation } from 'typeorm';
 import { UserEntity } from './user.entity';
 
 @Entity('sessions')
@@ -24,5 +25,5 @@ export class SessionEntity {
 
   @ManyToOne(() => UserEntity, { eager: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
-  user!: UserEntity;
+  user!: Relation<UserEntity>;
 }

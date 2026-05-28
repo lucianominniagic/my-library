@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { Entity, PrimaryColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import type { Relation } from 'typeorm';
 import { BookEntity } from './book.entity';
 import { AuthorEntity } from './author.entity';
 
@@ -24,12 +25,12 @@ export class BookAuthorEntity {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'book_id' })
-  book!: BookEntity;
+  book!: Relation<BookEntity>;
 
   @ManyToOne(() => AuthorEntity, (author) => author.bookAuthors, {
     eager: false,
     onDelete: 'RESTRICT',
   })
   @JoinColumn({ name: 'author_id' })
-  author!: AuthorEntity;
+  author!: Relation<AuthorEntity>;
 }

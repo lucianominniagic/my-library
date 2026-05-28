@@ -7,7 +7,8 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
-import type { BookAuthorEntity } from './book-author.entity';
+import type { Relation } from 'typeorm';
+import { BookAuthorEntity } from './book-author.entity';
 
 @Entity('authors')
 export class AuthorEntity {
@@ -32,6 +33,6 @@ export class AuthorEntity {
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt!: Date;
 
-  @OneToMany('book_authors', (ba: BookAuthorEntity) => ba.author, { eager: false })
-  bookAuthors!: BookAuthorEntity[];
+  @OneToMany(() => BookAuthorEntity, (ba) => ba.author, { eager: false })
+  bookAuthors!: Relation<BookAuthorEntity[]>;
 }

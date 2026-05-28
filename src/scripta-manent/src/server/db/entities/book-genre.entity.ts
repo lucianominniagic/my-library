@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { Entity, PrimaryColumn, ManyToOne, JoinColumn } from 'typeorm';
+import type { Relation } from 'typeorm';
 import { BookEntity } from './book.entity';
 import { GenreEntity } from './genre.entity';
 
@@ -29,9 +30,9 @@ export class BookGenreEntity {
 
   @ManyToOne(() => BookEntity, { eager: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'book_id' })
-  book!: BookEntity;
+  book!: Relation<BookEntity>;
 
   @ManyToOne(() => GenreEntity, { eager: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'genre_id' })
-  genre!: GenreEntity;
+  genre!: Relation<GenreEntity>;
 }
