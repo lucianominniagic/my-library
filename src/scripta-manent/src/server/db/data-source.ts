@@ -95,6 +95,7 @@ export async function initializeDBConnection(): Promise<DataSource> {
   }
   console.log('initializeDBConnection: awaiting DataSource initialization...');
   console.dir(_initPromise);
+  
   return _initPromise;
 }
 
