@@ -35,6 +35,6 @@ export class TagEntity {
   @JoinColumn({ name: 'user_id' })
   user!: UserEntity;
 
-  @ManyToMany('BookEntity', (book: BookEntity) => book.tags, { eager: false })
+  @ManyToMany('books', (book: BookEntity) => book.tags, { eager: false })
   books!: BookEntity[];
 }

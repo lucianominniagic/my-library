@@ -28,9 +28,9 @@ export class UserEntity {
   @Column({ name: 'password_hash', type: 'text', nullable: true, select: false })
   passwordHash!: string | null;
 
-  @OneToMany('BookEntity', (book: BookEntity) => book.user, { eager: false })
+  @OneToMany('books', (book: BookEntity) => book.user, { eager: false })
   books!: BookEntity[];
 
-  @OneToMany('TagEntity', (tag: TagEntity) => tag.user, { eager: false })
+  @OneToMany('tags', (tag: TagEntity) => tag.user, { eager: false })
   tags!: TagEntity[];
 }

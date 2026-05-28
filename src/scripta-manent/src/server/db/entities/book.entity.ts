@@ -95,7 +95,7 @@ export class BookEntity {
   @JoinColumn({ name: 'user_id' })
   user!: UserEntity;
 
-  @OneToMany('BookAuthorEntity', (ba: BookAuthorEntity) => ba.book, {
+  @OneToMany('book_authors', (ba: BookAuthorEntity) => ba.book, {
     eager: false,
     cascade: ['insert', 'update'],
   })

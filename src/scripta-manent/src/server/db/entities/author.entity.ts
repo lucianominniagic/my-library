@@ -32,6 +32,6 @@ export class AuthorEntity {
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt!: Date;
 
-  @OneToMany('BookAuthorEntity', (ba: BookAuthorEntity) => ba.author, { eager: false })
+  @OneToMany('book_authors', (ba: BookAuthorEntity) => ba.author, { eager: false })
   bookAuthors!: BookAuthorEntity[];
 }

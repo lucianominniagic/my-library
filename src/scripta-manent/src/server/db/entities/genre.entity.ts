@@ -16,6 +16,6 @@ export class GenreEntity {
   @Column({ name: 'sort_order', type: 'smallint', default: 0 })
   sortOrder!: number;
 
-  @ManyToMany('BookEntity', (book: BookEntity) => book.genres, { eager: false })
+  @ManyToMany('books', (book: BookEntity) => book.genres, { eager: false })
   books!: BookEntity[];
 }
