@@ -239,17 +239,21 @@ export const bookRouter = router({
             title:     'book.title',
             yearRead:  'book.year_read',
             rating:    'book.rating',
-            createdAt: 'book.created_at'
+            createdAt: 'book.created_at',
+            updatedAt: 'book.updated_at'
           };
-          const primarySort = sortMap[input.sortBy] ?? 'book.created_at';
+          const primarySort = sortMap[input.sortBy] ?? 'book.title';
           // Quando il sort primario non è esplicito su year_read,
           // i TBR (year_read IS NULL) vanno PRIMA dei letti — NULLS FIRST.
           if (input.sortBy !== 'yearRead') {
             lightQb.orderBy('book.year_read IS NOT NULL', 'ASC'); // false(TBR)=0 viene prima di true(letto)=1
+            lightQb.addOrderBy('book.year_read', 'DESC'); 
             lightQb.addOrderBy(primarySort, dir);
           } else {
             lightQb.orderBy(primarySort, dir);
           }
+          console.log('input.sortBy:', input.sortBy); // debug SQL generato per ordinamento senza query di ricerca
+          console.log('[book.list] Ordinamento:', lightQb.getSql()); // debug SQL generato per ordinamento senza query di ricerca
         }
       }
 
