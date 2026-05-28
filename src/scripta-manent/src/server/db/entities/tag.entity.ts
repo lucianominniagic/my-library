@@ -35,16 +35,6 @@ export class TagEntity {
   @JoinColumn({ name: 'user_id' })
   user!: UserEntity;
 
-  @ManyToMany(
-    () => {
-      // require() via il barrel garantisce la STESSA istanza di classe usata
-      // da data-source.ts e dai router — evita EntityMetadataNotFoundError.
-      // Il lazy require() evita il problema circular-dep al momento del caricamento.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return (require('@/server/db/entities') as typeof import('@/server/db/entities')).BookEntity;
-    },
-    (book: BookEntity) => book.tags,
-    { eager: false }
-  )
+  @ManyToMany('BookEntity', (book: BookEntity) => book.tags, { eager: false })
   books!: BookEntity[];
 }

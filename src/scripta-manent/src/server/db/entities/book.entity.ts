@@ -95,20 +95,10 @@ export class BookEntity {
   @JoinColumn({ name: 'user_id' })
   user!: UserEntity;
 
-  @OneToMany(
-    () => {
-      // require() via il barrel garantisce la STESSA istanza di classe usata
-      // da data-source.ts e dai router — evita EntityMetadataNotFoundError.
-      // Il lazy require() evita il problema circular-dep al momento del caricamento.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return (require('@/server/db/entities') as typeof import('@/server/db/entities')).BookAuthorEntity;
-    },
-    (ba: BookAuthorEntity) => ba.book,
-    {
-      eager: false,
-      cascade: ['insert', 'update'],
-    }
-  )
+  @OneToMany('BookAuthorEntity', (ba: BookAuthorEntity) => ba.book, {
+    eager: false,
+    cascade: ['insert', 'update'],
+  })
   bookAuthors!: BookAuthorEntity[];
 
   @ManyToMany(() => GenreEntity, (genre) => genre.books, { eager: false })

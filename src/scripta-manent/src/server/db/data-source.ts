@@ -87,10 +87,14 @@ let _initPromise: Promise<DataSource> | null = null;
  * Usato da createContext() tRPC e da qualsiasi server-side code.
  */
 export async function initializeDBConnection(): Promise<DataSource> {
+  console.log('initializeDBConnection: checking DataSource initialization...');
+  console.log(`AppDataSource.isInitialized: ${AppDataSource.isInitialized}`);
   if (AppDataSource.isInitialized) return AppDataSource;
   if (!_initPromise) {
     _initPromise = AppDataSource.initialize().then(() => AppDataSource);
   }
+  console.log('initializeDBConnection: awaiting DataSource initialization...');
+  console.dir(_initPromise);
   return _initPromise;
 }
 
