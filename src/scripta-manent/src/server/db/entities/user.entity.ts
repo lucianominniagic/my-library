@@ -1,8 +1,5 @@
 import 'reflect-metadata';
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import type { Relation } from 'typeorm';
-import { BookEntity } from './book.entity';
-import { TagEntity } from './tag.entity';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 @Entity('users')
 export class UserEntity {
@@ -29,9 +26,4 @@ export class UserEntity {
   @Column({ name: 'password_hash', type: 'text', nullable: true, select: false })
   passwordHash!: string | null;
 
-  @OneToMany(() => BookEntity, (book) => book.user, { eager: false })
-  books!: Relation<BookEntity[]>;
-
-  @OneToMany(() => TagEntity, (tag) => tag.user, { eager: false })
-  tags!: Relation<TagEntity[]>;
 }

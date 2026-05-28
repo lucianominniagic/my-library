@@ -4,13 +4,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  ManyToOne,
-  ManyToMany,
-  JoinColumn,
 } from 'typeorm';
-import type { Relation } from 'typeorm';
-import { UserEntity } from './user.entity';
-import { BookEntity } from './book.entity';
 
 @Entity('tags')
 export class TagEntity {
@@ -32,10 +26,4 @@ export class TagEntity {
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 
-  @ManyToOne(() => UserEntity, { eager: false, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
-  user!: Relation<UserEntity>;
-
-  @ManyToMany(() => BookEntity, (book) => book.tags, { eager: false })
-  books!: Relation<BookEntity[]>;
 }

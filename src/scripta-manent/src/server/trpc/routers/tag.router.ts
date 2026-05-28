@@ -24,19 +24,34 @@ export const tagRouter = router({
     const userId = ctx.session.user.id as string;
     const repo   = ctx.db.getRepository(TagEntity);
 
-    const tags = (await repo
+    const tags = await repo
       .createQueryBuilder('tag')
-      .loadRelationCountAndMap('tag.bookCount', 'tag.books', 'book')
+      .leftJoin('book_tags', 'bt', 'bt.tag_id = tag.id')
+      .select('tag.id', 'id')
+      .addSelect('tag.name', 'name')
+      .addSelect('tag.slug', 'slug')
+      .addSelect('tag.color', 'color')
+      .addSelect('COUNT(bt.book_id)', 'bookCount')
       .where('tag.user_id = :userId', { userId })
+      .groupBy('tag.id')
+      .addGroupBy('tag.name')
+      .addGroupBy('tag.slug')
+      .addGroupBy('tag.color')
       .orderBy('tag.name', 'ASC')
-      .getMany()) as (TagEntity & { bookCount: number })[];
+      .getRawMany<{
+        id: string;
+        name: string;
+        slug: string;
+        color: string | null;
+        bookCount: string;
+      }>();
 
     return tags.map((t) => ({
       id:        t.id,
       name:      t.name,
       slug:      t.slug,
       color:     t.color,
-      bookCount: t.bookCount ?? 0,
+      bookCount: Number(t.bookCount) || 0,
     }));
   }),
 

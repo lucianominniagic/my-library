@@ -5,14 +5,11 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  ManyToOne,
   OneToMany,
   ManyToMany,
   JoinTable,
-  JoinColumn,
 } from 'typeorm';
 import type { Relation } from 'typeorm';
-import { UserEntity } from './user.entity';
 import { BookAuthorEntity } from './book-author.entity';
 import { GenreEntity } from './genre.entity';
 import { TagEntity } from './tag.entity';
@@ -89,20 +86,13 @@ export class BookEntity {
   })
   ftsVector!: string;
 
-  @ManyToOne(() => UserEntity, (user) => user.books, {
-    eager: false,
-    onDelete: 'CASCADE',
-  })
-  @JoinColumn({ name: 'user_id' })
-  user!: Relation<UserEntity>;
-
   @OneToMany(() => BookAuthorEntity, (ba) => ba.book, {
     eager: false,
     cascade: ['insert', 'update'],
   })
   bookAuthors!: Relation<BookAuthorEntity[]>;
 
-  @ManyToMany(() => GenreEntity, (genre) => genre.books, { eager: false })
+  @ManyToMany(() => GenreEntity, { eager: false })
   @JoinTable({
     name: 'book_genres',
     joinColumn: { name: 'book_id' },
@@ -110,7 +100,7 @@ export class BookEntity {
   })
   genres!: Relation<GenreEntity[]>;
 
-  @ManyToMany(() => TagEntity, (tag) => tag.books, { eager: false })
+  @ManyToMany(() => TagEntity, { eager: false })
   @JoinTable({
     name: 'book_tags',
     joinColumn: { name: 'book_id' },
