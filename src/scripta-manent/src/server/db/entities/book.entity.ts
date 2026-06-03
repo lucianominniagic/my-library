@@ -58,6 +58,9 @@ export class BookEntity {
   @Column({ type: 'smallint', nullable: true })
   rating!: number | null;
 
+  @Column({ type: 'boolean', nullable: true })
+  letto!: boolean | null;
+
   @Column({ type: 'text', nullable: true })
   notes!: string | null;
 

@@ -26,6 +26,7 @@ export type BookListItemDto = {
   coverUrl: string | null;
   yearPurchase: number | null;
   rating: number | null;
+  letto: boolean | null;
   authors: AuthorDto[];
   genres: GenreDto[];
   tags: TagDto[];

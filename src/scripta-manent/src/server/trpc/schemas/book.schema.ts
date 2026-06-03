@@ -30,6 +30,7 @@ export const BookCreateSchema = z.object({
   coverUrl:      z.union([z.string().url(), z.string().regex(/^\/(api\/)?covers\//)]).optional(),
   yearPurchase:      z.number().int().min(1800).max(2200).optional(),
   rating:        z.number().int().min(1).max(5).optional(),
+  letto:         z.boolean().optional(),
   notes:         z.string().optional(),
   authors: z.array(z.object({
     authorId:  z.string().uuid(),
@@ -53,5 +54,6 @@ export const BookUpdateSchema = BookCreateSchema.partial().extend({
   coverUrl:      z.union([z.string().url(), z.string().regex(/^\/(api\/)?covers\//), z.null()]).optional(),
   yearPurchase:      z.number().int().min(1800).max(2200).nullable().optional(),
   rating:        z.number().int().min(1).max(5).nullable().optional(),
+  letto:         z.boolean().nullable().optional(),
   notes:         z.string().trim().nullable().optional(),
 });

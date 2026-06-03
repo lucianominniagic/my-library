@@ -50,6 +50,7 @@ function mapToListItem(book: BookEntity): BookListItemDto {
     coverUrl:  book.coverUrl,
     yearPurchase:  book.yearPurchase,
     rating:    book.rating,
+    letto:     book.letto,
     authors,
     genres: (book.genres ?? []).map((g) => ({
       id:   g.id,
@@ -375,6 +376,7 @@ export const bookRouter = router({
           coverUrl:      input.coverUrl      ?? null,
           yearPurchase:      input.yearPurchase      ?? null,
           rating:        input.rating        ?? null,
+          letto:         input.letto         ?? null,
           notes:         input.notes         ?? null,
           genres,
           tags,
@@ -500,6 +502,7 @@ export const bookRouter = router({
         }
         if (input.yearPurchase      !== undefined) book.yearPurchase      = input.yearPurchase      ?? null;
         if (input.rating        !== undefined) book.rating        = input.rating        ?? null;
+        if (input.letto         !== undefined) book.letto         = input.letto         ?? null;
         if (input.notes         !== undefined) book.notes         = input.notes         ?? null;
 
         // 3. Aggiorna generi
