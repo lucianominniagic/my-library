@@ -17,12 +17,14 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  FormControlLabel,
   FormHelperText,
   InputLabel,
   LinearProgress,
   MenuItem,
   Select,
   Snackbar,
+  Switch,
   TextField,
   Typography,
   useMediaQuery,
@@ -125,6 +127,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
   const [pages, setPages] = useState('');
   const [description, setDescription] = useState('');
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [letto, setLetto] = useState(false);
 
   // ── Author search state ──────────────────────────────────────────────────────
   const [authorInput, setAuthorInput] = useState('');
@@ -220,6 +223,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
       setPages(book.pages != null ? String(book.pages) : '');
       setDescription(book.description ?? '');
       setCoverUrl(book.coverUrl ?? null);
+      setLetto(book.letto ?? false);
       setSelectedAuthors(
         book.authors.map((a) => ({
           authorId: a.id,
@@ -247,6 +251,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
       setPages('');
       setDescription('');
       setCoverUrl(null);
+      setLetto(false);
       setSelectedTags([]);
       setCoverSnackbar(null);
     }
@@ -356,6 +361,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
         yearPurchase: yearPurchaseNum,
         rating: yearPurchaseNum != null && rating != null ? rating : null,
         notes: notes.trim() || null,
+        letto,
         authors,
         genreIds,
         tagIds,
@@ -378,6 +384,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
         yearPurchase: yearPurchaseNum,
         rating: yearPurchaseNum != null && rating != null ? rating : undefined,
         notes: notes.trim() || undefined,
+        letto: letto || undefined,
         authors,
         genreIds,
         tagIds,
@@ -714,8 +721,8 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
             )}
           />
 
-          {/* ── Anno acquisto + Rating ─────────────────────────────────────────── */}
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          {/* ── Anno acquisto + Rating + Letto ─────────────────────────────────── */}
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-start' }}>
             <TextField
               label="Anno acquisto"
               type="number"
@@ -738,6 +745,19 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
                 <StarRating value={rating} size="medium" readonly={false} onChange={setRating} />
               </Box>
             )}
+
+            <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 56 }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={letto}
+                    onChange={(e) => setLetto(e.target.checked)}
+                    color="success"
+                  />
+                }
+                label="Letto"
+              />
+            </Box>
           </Box>
 
           {/* ── Note ─────────────────────────────────────────────────────────── */}
