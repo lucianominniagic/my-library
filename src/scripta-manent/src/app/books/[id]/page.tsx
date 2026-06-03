@@ -85,7 +85,7 @@ export default function BookDetailPage({ params }: BookDetailPageProps) {
     );
   }
 
-  const isRead = book.yearPurchase != null;
+  const isRead = book.letto === true;
   const authorLabel = book.authors.map((a) => a.name).join(', ');
   const isDbCover = book.coverUrl?.startsWith('/api/covers/');
 
@@ -163,7 +163,7 @@ export default function BookDetailPage({ params }: BookDetailPageProps) {
           {/* Status + rating */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
             <Chip
-              label={isRead ? `Letto ${book.yearPurchase}` : 'Da leggere'}
+              label={isRead ? `Letto${book.yearPurchase ? ` ${book.yearPurchase}` : ''}` : 'Da leggere'}
               color={isRead ? 'success' : 'default'}
             />
             {isRead && book.rating != null && (

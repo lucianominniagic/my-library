@@ -188,7 +188,7 @@ function BooksPageInner() {
     if (newStatus) {
       setStatus(newStatus);
       setPage(1);
-      // Clear year filter when switching to 'tbr' — TBR books have no yearPurchase
+      // Clear year filter when switching to 'tbr' — non rilevante per libri da leggere
       if (newStatus === 'tbr') {
         setSelectedYear('');
       }

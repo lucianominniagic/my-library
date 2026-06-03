@@ -144,8 +144,11 @@ export const bookRouter = router({
         .where('book.user_id = :userId', { userId });
 
       // ── Filtro status ──────────────────────────────────────────────────────
-      if (input.status === 'read') lightQb.andWhere('book.year_purchase IS NOT NULL');
-      if (input.status === 'tbr')  lightQb.andWhere('book.year_purchase IS NULL');
+      // "letti"     → letto = true
+      // "da leggere"→ letto IS NULL OR letto = false
+      // "tutti"     → nessun filtro
+      if (input.status === 'read') lightQb.andWhere('book.letto = true');
+      if (input.status === 'tbr')  lightQb.andWhere('(book.letto IS NULL OR book.letto = false)');
 
       // ── Filtro generi (EXISTS: non tocca i dati idratati) ─────────────────
       if (input.genreIds?.length) {
