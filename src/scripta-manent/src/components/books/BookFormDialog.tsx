@@ -65,7 +65,7 @@ interface SelectedAuthor {
 interface FormErrors {
   title?: string;
   authors?: string;
-  yearRead?: string;
+  yearPurchase?: string;
   coverUrl?: string;
 }
 
@@ -110,7 +110,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [titleEn, setTitleEn] = useState('');
-  const [yearRead, setYearRead] = useState('');
+  const [yearPurchase, setyearPurchase] = useState('');
   const [rating, setRating] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
   const [selectedAuthors, setSelectedAuthors] = useState<SelectedAuthor[]>([]);
@@ -210,7 +210,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
       setTitle(book.title);
       setSubtitle(book.subtitle ?? '');
       setTitleEn(book.titleEn ?? '');
-      setYearRead(book.yearRead != null ? String(book.yearRead) : '');
+      setyearPurchase(book.yearPurchase != null ? String(book.yearPurchase) : '');
       setRating(book.rating);
       setNotes(book.notes ?? '');
       setIsbn(book.isbn ?? '');
@@ -237,7 +237,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
       setTitle('');
       setSubtitle('');
       setTitleEn('');
-      setYearRead('');
+      setyearPurchase('');
       setRating(null);
       setNotes('');
       setIsbn('');
@@ -268,10 +268,10 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
     if (selectedAuthors.length === 0) {
       newErrors.authors = 'Almeno un autore è richiesto';
     }
-    if (yearRead.trim()) {
-      const yr = Number(yearRead);
+    if (yearPurchase.trim()) {
+      const yr = Number(yearPurchase);
       if (!Number.isInteger(yr) || yr < 1800 || yr > 2200) {
-        newErrors.yearRead = 'Anno non valido (1800–2200)';
+        newErrors.yearPurchase = 'Anno non valido (1800–2200)';
       }
     }
     if (coverUrl?.trim()) {
@@ -337,7 +337,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
 
     if (isEdit && book) {
       // update: campo vuoto → null (cancella il valore nel DB)
-      const yearReadNum = yearRead.trim() ? Number(yearRead) : null;
+      const yearPurchaseNum = yearPurchase.trim() ? Number(yearPurchase) : null;
       updateMutation.mutate({
         id: book.id,
         title: title.trim(),
@@ -353,8 +353,8 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
         // ''    = campo svuotato manualmente → undefined (non toccare)
         // stringa = URL valida → invia la stringa
         coverUrl: coverUrl === null ? null : (coverUrl?.trim() || undefined),
-        yearRead: yearReadNum,
-        rating: yearReadNum != null && rating != null ? rating : null,
+        yearPurchase: yearPurchaseNum,
+        rating: yearPurchaseNum != null && rating != null ? rating : null,
         notes: notes.trim() || null,
         authors,
         genreIds,
@@ -362,7 +362,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
       });
     } else {
       // create: campo vuoto → undefined (il DB usa il default NULL, non inviare)
-      const yearReadNum = yearRead.trim() ? Number(yearRead) : undefined;
+      const yearPurchaseNum = yearPurchase.trim() ? Number(yearPurchase) : undefined;
       createMutation.mutate({
         title: title.trim(),
         subtitle: subtitle.trim() || undefined,
@@ -375,8 +375,8 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
         description: description.trim() || undefined,
         // BookCreateSchema non accetta null — se coverUrl è null (mai in create, ma per sicurezza) → undefined
         coverUrl: coverUrl === null ? undefined : (coverUrl?.trim() || undefined),
-        yearRead: yearReadNum,
-        rating: yearReadNum != null && rating != null ? rating : undefined,
+        yearPurchase: yearPurchaseNum,
+        rating: yearPurchaseNum != null && rating != null ? rating : undefined,
         notes: notes.trim() || undefined,
         authors,
         genreIds,
@@ -421,8 +421,8 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
     );
   }
 
-  const yearReadNum = yearRead.trim() ? Number(yearRead) : NaN;
-  const showRating = !isNaN(yearReadNum) && yearReadNum >= 1800 && yearReadNum <= 2200;
+  const yearPurchaseNum = yearPurchase.trim() ? Number(yearPurchase) : NaN;
+  const showRating = !isNaN(yearPurchaseNum) && yearPurchaseNum >= 1800 && yearPurchaseNum <= 2200;
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Render
@@ -719,13 +719,13 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
             <TextField
               label="Anno lettura"
               type="number"
-              value={yearRead}
+              value={yearPurchase}
               onChange={(e) => {
-                setYearRead(e.target.value);
+                setyearPurchase(e.target.value);
                 if (!e.target.value) setRating(null);
               }}
-              error={!!errors.yearRead}
-              helperText={errors.yearRead ?? 'Lascia vuoto per "Da leggere"'}
+              error={!!errors.yearPurchase}
+              helperText={errors.yearPurchase ?? 'Lascia vuoto per "Da leggere"'}
               sx={{ width: 200 }}
               slotProps={{ htmlInput: { min: 1800, max: 2200 } }}
             />

@@ -134,8 +134,8 @@ function BooksPageInner() {
     status,
     genreIds: selectedGenreIds.length > 0 ? selectedGenreIds : undefined,
     tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
-    yearReadFrom: status !== 'tbr' && selectedYear !== '' ? selectedYear : undefined,
-    yearReadTo: status !== 'tbr' && selectedYear !== '' ? selectedYear : undefined,
+    yearPurchaseFrom: status !== 'tbr' && selectedYear !== '' ? selectedYear : undefined,
+    yearPurchaseTo: status !== 'tbr' && selectedYear !== '' ? selectedYear : undefined,
     sortBy: 'updatedAt',
     sortDir: 'desc',
   });
@@ -188,7 +188,7 @@ function BooksPageInner() {
     if (newStatus) {
       setStatus(newStatus);
       setPage(1);
-      // Clear year filter when switching to 'tbr' — TBR books have no yearRead
+      // Clear year filter when switching to 'tbr' — TBR books have no yearPurchase
       if (newStatus === 'tbr') {
         setSelectedYear('');
       }

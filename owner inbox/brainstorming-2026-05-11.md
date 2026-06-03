@@ -83,7 +83,7 @@ authors ──< book_authors >── books ──< book_tags >── tags
 | `authors` | id, name, nationality, aliases[] |
 | `books` | id, title, genres text[], cover_url, search_vector, published_year |
 | `book_authors` | book_id, author_id, role (primary/co-author) |
-| `readings` | id, book_id, year_read, rating (1-5), notes |
+| `readings` | id, book_id, year_purchase, rating (1-5), notes |
 | `tags` | id, name, slug |
 | `book_tags` | book_id, tag_id |
 
@@ -93,7 +93,7 @@ authors ──< book_authors >── books ──< book_tags >── tags
 CREATE INDEX idx_books_title_trgm   ON books   USING GIN (unaccent(title) gin_trgm_ops);
 CREATE INDEX idx_authors_name_trgm  ON authors USING GIN (unaccent(name)  gin_trgm_ops);
 CREATE INDEX idx_books_genres       ON books   USING GIN (genres);
-CREATE INDEX idx_readings_year      ON readings (year_read);
+CREATE INDEX idx_readings_year      ON readings (year_purchase);
 CREATE INDEX idx_readings_rating    ON readings (rating) WHERE rating IS NOT NULL;
 ```
 

@@ -143,7 +143,7 @@ export class InitialSchema1710000000001 implements MigrationInterface {
         pages           INTEGER,
         description     TEXT,
         cover_url       TEXT,
-        year_read       SMALLINT,
+        year_purchase       SMALLINT,
         rating          SMALLINT,
         notes           TEXT,
         created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -157,7 +157,7 @@ export class InitialSchema1710000000001 implements MigrationInterface {
         CONSTRAINT fk_books_user       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         CONSTRAINT chk_books_rating    CHECK (rating IS NULL OR rating BETWEEN 1 AND 5),
         CONSTRAINT chk_books_pub_year  CHECK (published_year IS NULL OR published_year BETWEEN 0 AND 2200),
-        CONSTRAINT chk_books_year_read CHECK (year_read IS NULL OR year_read BETWEEN 1800 AND 2200),
+        CONSTRAINT chk_books_year_purchase CHECK (year_purchase IS NULL OR year_purchase BETWEEN 1800 AND 2200),
         CONSTRAINT chk_books_language  CHECK (language ~ '^[a-z]{2}$')
       )
     `);
@@ -241,10 +241,10 @@ export class InitialSchema1710000000001 implements MigrationInterface {
     await queryRunner.query(`CREATE INDEX idx_books_fts ON books USING GIN (fts_vector)`);
     await queryRunner.query(`CREATE INDEX idx_books_user_id ON books (user_id)`);
     await queryRunner.query(
-      `CREATE INDEX idx_books_tbr ON books (user_id, created_at DESC) WHERE year_read IS NULL`,
+      `CREATE INDEX idx_books_tbr ON books (user_id, created_at DESC) WHERE year_purchase IS NULL`,
     );
     await queryRunner.query(
-      `CREATE INDEX idx_books_read_by_year ON books (user_id, year_read DESC) WHERE year_read IS NOT NULL`,
+      `CREATE INDEX idx_books_read_by_year ON books (user_id, year_purchase DESC) WHERE year_purchase IS NOT NULL`,
     );
     await queryRunner.query(
       `CREATE INDEX idx_books_rating ON books (user_id, rating) WHERE rating IS NOT NULL`,

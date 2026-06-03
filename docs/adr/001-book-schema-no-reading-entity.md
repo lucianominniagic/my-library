@@ -10,12 +10,12 @@
 ## Context
 
 Durante il brainstorming Shakespeare aveva proposto una tabella `readings` separata
-(un record per ogni lettura: `year_read`, `rating`, `notes`) per supportare le **reletture**
+(un record per ogni lettura: `year_purchase`, `rating`, `notes`) per supportare le **reletture**
 — caso d'uso comune in app tipo Goodreads.
 
 Luciano ha chiarito che:
 1. **Le reletture NON sono tracciate** — ogni libro ha al massimo una data di lettura e un voto.
-2. **I libri "da leggere" (TBR)** non richiedono un'entità separata: `year_read IS NULL` è sufficiente.
+2. **I libri "da leggere" (TBR)** non richiedono un'entità separata: `year_purchase IS NULL` è sufficiente.
 
 ### Opzioni valutate
 
@@ -29,7 +29,7 @@ Luciano ha chiarito che:
 
 ## Decision
 
-**Opzione B.** `year_read` e `rating` vanno direttamente sulla tabella `books`.
+**Opzione B.** `year_purchase` e `rating` vanno direttamente sulla tabella `books`.
 La tabella `readings` non viene creata.
 
 ---
@@ -38,13 +38,13 @@ La tabella `readings` non viene creata.
 
 ```sql
 -- Aggiunto alla tabella books:
-year_read   SMALLINT    NULL,         -- NULL = da leggere (TBR)
+year_purchase   SMALLINT    NULL,         -- NULL = da leggere (TBR)
 rating      SMALLINT    NULL
               CHECK (rating BETWEEN 1 AND 5),
 notes       TEXT        NULL          -- campo libero (impressioni, citazioni)
 ```
 
-### Semantica `year_read`
+### Semantica `year_purchase`
 
 | Valore | Significato |
 |---|---|
@@ -54,13 +54,13 @@ notes       TEXT        NULL          -- campo libero (impressioni, citazioni)
 ### Query TBR (gratis, senza join)
 
 ```sql
-SELECT * FROM books WHERE year_read IS NULL ORDER BY title;
+SELECT * FROM books WHERE year_purchase IS NULL ORDER BY title;
 ```
 
 ### Indici
 
 ```sql
-CREATE INDEX idx_books_year_read ON books (year_read) WHERE year_read IS NOT NULL;
+CREATE INDEX idx_books_year_purchase ON books (year_purchase) WHERE year_purchase IS NOT NULL;
 CREATE INDEX idx_books_rating    ON books (rating)    WHERE rating IS NOT NULL;
 ```
 
@@ -88,11 +88,11 @@ CREATE INDEX idx_books_rating    ON books (rating)    WHERE rating IS NOT NULL;
 CREATE TABLE readings (
   id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   book_id   UUID REFERENCES books(id) ON DELETE CASCADE,
-  year_read SMALLINT NOT NULL,
+  year_purchase SMALLINT NOT NULL,
   rating    SMALLINT CHECK (rating BETWEEN 1 AND 5),
   notes     TEXT,
   PRIMARY KEY (id)
 );
--- Migrare year_read/rating da books a readings con INSERT INTO readings SELECT ...
--- Poi DROP COLUMN year_read, rating da books
+-- Migrare year_purchase/rating da books a readings con INSERT INTO readings SELECT ...
+-- Poi DROP COLUMN year_purchase, rating da books
 ```

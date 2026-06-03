@@ -10,10 +10,10 @@ export const BookFiltersSchema = z.object({
   genreIds:     z.array(z.string().uuid()).optional(),
   tagIds:       z.array(z.string().uuid()).optional(),
   ratingMin:    z.number().int().min(1).max(5).optional(),
-  yearReadFrom: z.number().int().optional(),
-  yearReadTo:   z.number().int().optional(),
+  yearPurchaseFrom: z.number().int().optional(),
+  yearPurchaseTo:   z.number().int().optional(),
   status:       z.enum(['all', 'read', 'tbr']).default('all'),
-  sortBy:       z.enum(['title', 'author', 'yearRead', 'rating', 'createdAt', 'updatedAt']).default('updatedAt'),
+  sortBy:       z.enum(['title', 'author', 'yearPurchase', 'rating', 'createdAt', 'updatedAt']).default('updatedAt'),
   sortDir:      z.enum(['asc', 'desc']).default('desc'),
 });
 
@@ -28,7 +28,7 @@ export const BookCreateSchema = z.object({
   pages:         z.number().int().min(0).optional(),
   description:   z.string().optional(),
   coverUrl:      z.union([z.string().url(), z.string().regex(/^\/(api\/)?covers\//)]).optional(),
-  yearRead:      z.number().int().min(1800).max(2200).optional(),
+  yearPurchase:      z.number().int().min(1800).max(2200).optional(),
   rating:        z.number().int().min(1).max(5).optional(),
   notes:         z.string().optional(),
   authors: z.array(z.object({
@@ -51,7 +51,7 @@ export const BookUpdateSchema = BookCreateSchema.partial().extend({
   description:   z.string().trim().nullable().optional(),
   titleEn:       z.string().max(500).trim().nullable().optional(),
   coverUrl:      z.union([z.string().url(), z.string().regex(/^\/(api\/)?covers\//), z.null()]).optional(),
-  yearRead:      z.number().int().min(1800).max(2200).nullable().optional(),
+  yearPurchase:      z.number().int().min(1800).max(2200).nullable().optional(),
   rating:        z.number().int().min(1).max(5).nullable().optional(),
   notes:         z.string().trim().nullable().optional(),
 });

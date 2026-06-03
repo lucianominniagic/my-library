@@ -20,7 +20,7 @@ export async function GET() {
   const headers = [
     'title', 'titleEn', 'subtitle', 'authors', 'genres', 'tags',
     'isbn', 'publisher', 'publishedYear', 'pages', 'language',
-    'yearRead', 'rating', 'notes', 'coverUrl', 'createdAt', 'updatedAt',
+    'yearPurchase', 'rating', 'notes', 'coverUrl', 'createdAt', 'updatedAt',
   ];
 
   const escape = (v: unknown): string => {
@@ -42,7 +42,7 @@ export async function GET() {
       b.publishedYear ?? '',
       b.pages ?? '',
       b.language ?? '',
-      b.yearRead ?? '',
+      b.yearPurchase ?? '',
       b.rating ?? '',
       b.notes ?? '',
       b.coverUrl ?? '',

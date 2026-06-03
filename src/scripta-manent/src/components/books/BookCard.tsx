@@ -35,7 +35,7 @@ export function BookCard({ book, onEdit, onDelete }: BookCardProps) {
   const authorLabel = book.authors
     .map((a) => a.name)
     .join(', ');
-  const isRead = book.yearRead != null;
+  const isRead = book.yearPurchase != null;
   const visibleGenres = book.genres.slice(0, 2);
   const isDbCover = book.coverUrl?.startsWith('/api/covers/');
 
@@ -142,7 +142,7 @@ export function BookCard({ book, onEdit, onDelete }: BookCardProps) {
           {/* Status badge + rating */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.75, flexWrap: 'wrap' }}>
             <Chip
-              label={isRead ? `Letto ${book.yearRead}` : 'Da leggere'}
+              label={isRead ? `Letto ${book.yearPurchase}` : 'Da leggere'}
               size="small"
               color={isRead ? 'success' : 'default'}
               sx={{ height: 18, fontSize: '0.65rem' }}

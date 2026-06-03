@@ -24,7 +24,7 @@ export type BookListItemDto = {
   title: string;
   subtitle: string | null;
   coverUrl: string | null;
-  yearRead: number | null;
+  yearPurchase: number | null;
   rating: number | null;
   authors: AuthorDto[];
   genres: GenreDto[];

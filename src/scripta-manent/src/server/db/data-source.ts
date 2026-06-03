@@ -32,6 +32,7 @@ import { SeedGenres1710000000002 } from './migrations/002_SeedGenres';
 import { AddPasswordHash1710000000003 } from './migrations/003_AddPasswordHash';
 import { AddTitleEn1710000000004 } from './migrations/004_AddTitleEn';
 import { AddBookCovers1710000000005 } from './migrations/005_AddBookCovers';
+import { RenameyearReadToYearPurchase1780477298496 } from './migrations/006_RenameYearReadToYearPurchase';
 
 const entities = [
   UserEntity,
@@ -48,7 +49,7 @@ const entities = [
   BookCoverEntity,
 ];
 
-const migrations = [InitialSchema1710000000001, SeedGenres1710000000002, AddPasswordHash1710000000003, AddTitleEn1710000000004, AddBookCovers1710000000005];
+const migrations = [InitialSchema1710000000001, SeedGenres1710000000002, AddPasswordHash1710000000003, AddTitleEn1710000000004, AddBookCovers1710000000005, RenameyearReadToYearPurchase1780477298496];
 
 /**
  * AppDataSource — singleton module-level.

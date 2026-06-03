@@ -52,8 +52,8 @@ export class BookEntity {
   @Column({ name: 'cover_url', type: 'text', nullable: true })
   coverUrl!: string | null;
 
-  @Column({ name: 'year_read', type: 'smallint', nullable: true })
-  yearRead!: number | null;
+  @Column({ name: 'year_purchase', type: 'smallint', nullable: true })
+  yearPurchase!: number | null;
 
   @Column({ type: 'smallint', nullable: true })
   rating!: number | null;

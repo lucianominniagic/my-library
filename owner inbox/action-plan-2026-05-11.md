@@ -8,9 +8,9 @@
 ## ADR — Architecture Decision Records
 
 ### ADR-001 · Schema Book semplificato
-**Decisione:** `year_read` (nullable) e `rating` (nullable 1-5) direttamente su `Book`.
+**Decisione:** `year_purchase` (nullable) e `rating` (nullable 1-5) direttamente su `Book`.
 - Tabella `readings` **eliminata**
-- `year_read IS NULL` = TBR | `year_read NOT NULL` = Letto
+- `year_purchase IS NULL` = TBR | `year_purchase NOT NULL` = Letto
 - Evolution path: migration semplice e non distruttiva se in futuro servono reletture
 
 ### ADR-002 · Google Books API — Cover URL *(rivisto 2026-05-12)*

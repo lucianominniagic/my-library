@@ -77,7 +77,7 @@ const GENRE_MAP: Record<string, string> = {
 interface CsvRow {
   title: string;
   authorName: string;
-  yearRead: number;
+  yearPurchase: number;
   genreNames: string[];
   rating: number | null;
   nationality: string | null;
@@ -115,8 +115,8 @@ function parseRow(record: string[]): CsvRow | null {
 
   if (!title || !authorName) return null;
 
-  const yearRead = parseInt(yearRaw, 10);
-  if (isNaN(yearRead)) return null;
+  const yearPurchase = parseInt(yearRaw, 10);
+  if (isNaN(yearPurchase)) return null;
 
   const genreNames = genreRaw ? splitGenres(genreRaw) : [];
 
@@ -125,7 +125,7 @@ function parseRow(record: string[]): CsvRow | null {
 
   const nationality = nationalityRaw || null;
 
-  return { title, authorName, yearRead, genreNames, rating, nationality };
+  return { title, authorName, yearPurchase, genreNames, rating, nationality };
 }
 
 /** Resolve a CSV genre name to a GenreEntity, using GENRE_MAP + case-insensitive DB lookup. */
@@ -243,7 +243,7 @@ async function main(): Promise<void> {
         continue;
       }
 
-      const { title, authorName, yearRead, genreNames, rating, nationality } = row;
+      const { title, authorName, yearPurchase, genreNames, rating, nationality } = row;
 
       try {
         // ── Find or create Author ──
@@ -304,7 +304,7 @@ async function main(): Promise<void> {
         const book = em.getRepository(BookEntity).create({
           userId: adminUser.id,
           title,
-          yearRead,
+          yearPurchase,
           rating,
           language: 'it',
           genres,

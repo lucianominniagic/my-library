@@ -76,7 +76,7 @@ e ambienti di sviluppo/test configurati.
   - `001-create-extensions` — `uuid-ossp`, `unaccent`, `pg_trgm`
   - `002-create-users`
   - `003-create-authors`
-  - `004-create-books` — con `year_read`, `rating`, `notes`, `cover_url`, `isbn`
+  - `004-create-books` — con `year_purchase`, `rating`, `notes`, `cover_url`, `isbn`
   - `005-create-genres-and-junction`
   - `006-create-tags-and-junction`
   - `007-create-book-authors`
@@ -96,7 +96,7 @@ authors ──< book_authors >── books ──< book_genres >── genres
 **Campi chiave `books`:**
 ```
 id, title, isbn, published_year, cover_url,
-year_read (nullable), rating (nullable 1-5), notes,
+year_purchase (nullable), rating (nullable 1-5), notes,
 search_vector, created_at, updated_at
 ```
 
@@ -171,7 +171,7 @@ appRouter
   2. Parsa e valida ogni riga con Zod
   3. Upsert `Author` (by name, crea aliases per typo)
   4. Lookup `Genre` by name → mapping → `genre_id`
-  5. Insert `Book` con `year_read`, `rating`, `notes` inline (ADR-001)
+  5. Insert `Book` con `year_purchase`, `rating`, `notes` inline (ADR-001)
   6. Crea `book_genres`, `book_authors`
   7. Fetch cover Google Books con delay 200ms (ADR-002) — può essere disabilitato con flag
   8. Report finale: N successi, M errori con dettaglio riga
@@ -231,7 +231,7 @@ appRouter
   ORDER BY similarity(...) DESC
   ```
 - Aggiornamento `book.list` con filtri combinati:
-  `genreSlug`, `tagSlug`, `yearRead` (null|number), `minRating`, `q` (search)
+  `genreSlug`, `tagSlug`, `yearPurchase` (null|number), `minRating`, `q` (search)
 
 ### Frontend (Ishiguro)
 - `SearchBar` con debounce 300ms

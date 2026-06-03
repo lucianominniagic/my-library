@@ -8,9 +8,9 @@
 
 | # | Risposta | Decisione finale |
 |---|---|---|
-| 1 | Niente reletture | `year_read` + `rating` + `notes` direttamente su `Book`. Tabella `readings` eliminata. |
+| 1 | Niente reletture | `year_purchase` + `rating` + `notes` direttamente su `Book`. Tabella `readings` eliminata. |
 | 2 | Co-autori sì | `book_authors (book_id, author_id, role)` confermata |
-| 3 | TBR = year_read NULL | `year_read IS NULL` = TBR, `year_read NOT NULL` = Letto. Stessa entità. |
+| 3 | TBR = year_purchase NULL | `year_purchase IS NULL` = TBR, `year_purchase NOT NULL` = Letto. Stessa entità. |
 | 4 | Copertine via Google Books | `cover_url TEXT` nullable su Book. Fetch al salvataggio. |
 | 5 | next-auth form auth | `CredentialsProvider` + `bcrypt`. Single-user. |
 | 6 | Generi vocabolario fisso | Tabella `genres` seeded. Chip fissi. Validazione Zod contro costante. |
@@ -26,7 +26,7 @@
 - **REQ-01** Aggiungere libro con titolo, autore/i, genere/i, anno lettura (opt), voto (opt), note (opt)
 - **REQ-02** Modificare tutti i campi di un libro
 - **REQ-03** Eliminare libro con dialog di conferma (no undo)
-- **REQ-04** TBR (year_read NULL) vs Letto (year_read valorizzato) — stesso Book
+- **REQ-04** TBR (year_purchase NULL) vs Letto (year_purchase valorizzato) — stesso Book
 - **REQ-05** Associare più autori a un libro con ruolo (author/editor/translator)
 - **REQ-07** Assegnare voto 1-5 a un libro letto
 
@@ -99,7 +99,7 @@ Scenario: Salvataggio senza titolo
 ### REQ-04 — Stato TBR vs Letto
 ```gherkin
 Scenario: Transizione TBR → Letto
-  Given libro con year_read = NULL
+  Given libro con year_purchase = NULL
   When utente inserisce anno_lettura = 2024 e rating = 4
   Then badge cambia a "Letto", campo rating visibile con 4 stelle
   And URL riflette ?status=read

@@ -48,7 +48,7 @@ function mapToListItem(book: BookEntity): BookListItemDto {
     title:     book.title,
     subtitle:  book.subtitle,
     coverUrl:  book.coverUrl,
-    yearRead:  book.yearRead,
+    yearPurchase:  book.yearPurchase,
     rating:    book.rating,
     authors,
     genres: (book.genres ?? []).map((g) => ({
@@ -143,8 +143,8 @@ export const bookRouter = router({
         .where('book.user_id = :userId', { userId });
 
       // ── Filtro status ──────────────────────────────────────────────────────
-      if (input.status === 'read') lightQb.andWhere('book.year_read IS NOT NULL');
-      if (input.status === 'tbr')  lightQb.andWhere('book.year_read IS NULL');
+      if (input.status === 'read') lightQb.andWhere('book.year_purchase IS NOT NULL');
+      if (input.status === 'tbr')  lightQb.andWhere('book.year_purchase IS NULL');
 
       // ── Filtro generi (EXISTS: non tocca i dati idratati) ─────────────────
       if (input.genreIds?.length) {
@@ -172,11 +172,11 @@ export const bookRouter = router({
       }
 
       // ── Filtro anno lettura ────────────────────────────────────────────────
-      if (input.yearReadFrom != null) {
-        lightQb.andWhere('book.year_read >= :yearReadFrom', { yearReadFrom: input.yearReadFrom });
+      if (input.yearPurchaseFrom != null) {
+        lightQb.andWhere('book.year_purchase >= :yearPurchaseFrom', { yearPurchaseFrom: input.yearPurchaseFrom });
       }
-      if (input.yearReadTo != null) {
-        lightQb.andWhere('book.year_read <= :yearReadTo', { yearReadTo: input.yearReadTo });
+      if (input.yearPurchaseTo != null) {
+        lightQb.andWhere('book.year_purchase <= :yearPurchaseTo', { yearPurchaseTo: input.yearPurchaseTo });
       }
 
       // ── Full-text search ───────────────────────────────────────────────────
@@ -212,8 +212,8 @@ export const bookRouter = router({
       if (input.q) {
         // Con query attiva: ordinamento per rilevanza ts_rank decrescente.
         // I match ILIKE-only (stop-word italiane) e author-only ottengono
-        // ts_rank = 0 → inclusi ma in coda, tiebreaker year_read DESC NULLS LAST
-        // (i libri TBR con year_read NULL vanno in fondo al tiebreaker).
+        // ts_rank = 0 → inclusi ma in coda, tiebreaker year_purchase DESC NULLS LAST
+        // (i libri TBR con year_purchase NULL vanno in fondo al tiebreaker).
         // I parametri :q e :qLike sono già bindati nel blocco andWhere precedente.
         lightQb
           .addSelect(
@@ -221,7 +221,7 @@ export const bookRouter = router({
             'rank',
           )
           .orderBy('rank', 'DESC')
-          .addOrderBy('book.year_read', 'DESC', 'NULLS LAST');
+          .addOrderBy('book.year_purchase', 'DESC', 'NULLS LAST');
       } else {
         if (input.sortBy === 'author') {
           // Subquery correlata: autore primario per sort_order ASC.
@@ -233,21 +233,21 @@ export const bookRouter = router({
               ORDER BY ba_s.sort_order ASC LIMIT 1)`,
             dir,
           );
-          lightQb.addOrderBy('book.year_read', 'DESC', 'NULLS LAST');
+          lightQb.addOrderBy('book.year_purchase', 'DESC', 'NULLS LAST');
         } else {
           const sortMap: Record<string, string> = {
             title:     'book.title',
-            yearRead:  'book.year_read',
+            yearPurchase:  'book.year_purchase',
             rating:    'book.rating',
             createdAt: 'book.created_at',
             updatedAt: 'book.updated_at'
           };
           const primarySort = sortMap[input.sortBy] ?? 'book.title';
-          // Quando il sort primario non è esplicito su year_read,
-          // i TBR (year_read IS NULL) vanno PRIMA dei letti — NULLS FIRST.
-          if (input.sortBy !== 'yearRead') {
-            lightQb.orderBy('book.year_read IS NOT NULL', 'ASC'); // false(TBR)=0 viene prima di true(letto)=1
-            lightQb.addOrderBy('book.year_read', 'DESC'); 
+          // Quando il sort primario non è esplicito su year_purchase,
+          // i TBR (year_purchase IS NULL) vanno PRIMA dei letti — NULLS FIRST.
+          if (input.sortBy !== 'yearPurchase') {
+            lightQb.orderBy('book.year_purchase IS NOT NULL', 'ASC'); // false(TBR)=0 viene prima di true(letto)=1
+            lightQb.addOrderBy('book.year_purchase', 'DESC'); 
             lightQb.addOrderBy(primarySort, dir);
           } else {
             lightQb.orderBy(primarySort, dir);
@@ -373,7 +373,7 @@ export const bookRouter = router({
           pages:         input.pages         ?? null,
           description:   input.description   ?? null,
           coverUrl:      input.coverUrl      ?? null,
-          yearRead:      input.yearRead      ?? null,
+          yearPurchase:      input.yearPurchase      ?? null,
           rating:        input.rating        ?? null,
           notes:         input.notes         ?? null,
           genres,
@@ -498,7 +498,7 @@ export const bookRouter = router({
           // null = rimozione esplicita; stringa = nuova URL; undefined già escluso dal guard
           book.coverUrl = input.coverUrl ?? null;
         }
-        if (input.yearRead      !== undefined) book.yearRead      = input.yearRead      ?? null;
+        if (input.yearPurchase      !== undefined) book.yearPurchase      = input.yearPurchase      ?? null;
         if (input.rating        !== undefined) book.rating        = input.rating        ?? null;
         if (input.notes         !== undefined) book.notes         = input.notes         ?? null;
 
@@ -676,10 +676,10 @@ export const bookRouter = router({
       const rows = await ctx.db
         .getRepository(BookEntity)
         .createQueryBuilder('book')
-        .select('DISTINCT book.year_read', 'year')
+        .select('DISTINCT book.year_purchase', 'year')
         .where('book.user_id = :userId', { userId })
-        .andWhere('book.year_read IS NOT NULL')
-        .orderBy('book.year_read', 'DESC')
+        .andWhere('book.year_purchase IS NOT NULL')
+        .orderBy('book.year_purchase', 'DESC')
         .getRawMany<{ year: number }>();
       return rows.map(r => Number(r.year));
     }),
