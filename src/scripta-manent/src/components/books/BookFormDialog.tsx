@@ -429,7 +429,7 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
   }
 
   const yearPurchaseNum = yearPurchase.trim() ? Number(yearPurchase) : NaN;
-  const showRating = !isNaN(yearPurchaseNum) && yearPurchaseNum >= 1800 && yearPurchaseNum <= 2200;
+  const showRating = letto && !isNaN(yearPurchaseNum) && yearPurchaseNum >= 1800 && yearPurchaseNum <= 2200;
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Render
@@ -751,7 +751,10 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
                 control={
                   <Switch
                     checked={letto}
-                    onChange={(e) => setLetto(e.target.checked)}
+                    onChange={(e) => {
+                      setLetto(e.target.checked);
+                      if (!e.target.checked) setRating(null);
+                    }}
                     color="success"
                   />
                 }
