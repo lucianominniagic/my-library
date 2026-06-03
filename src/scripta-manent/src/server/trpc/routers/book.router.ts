@@ -250,7 +250,7 @@ export const bookRouter = router({
           // Quando il sort primario non è esplicito su year_purchase,
           // i TBR (year_purchase IS NULL) vanno PRIMA dei letti — NULLS FIRST.
           if (input.sortBy !== 'yearPurchase') {
-            lightQb.orderBy('book.year_purchase IS NOT NULL', 'ASC'); // false(TBR)=0 viene prima di true(letto)=1
+            lightQb.orderBy('book.letto IS NOT NULL', 'ASC'); // false(TBR)=0 viene prima di true(letto)=1
             lightQb.addOrderBy('book.year_purchase', 'DESC'); 
             lightQb.addOrderBy(primarySort, dir);
           } else {
