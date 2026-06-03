@@ -714,10 +714,10 @@ export function BookFormDialog({ open, onClose, book }: BookFormDialogProps) {
             )}
           />
 
-          {/* ── Anno lettura + Rating ─────────────────────────────────────────── */}
+          {/* ── Anno acquisto + Rating ─────────────────────────────────────────── */}
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <TextField
-              label="Anno lettura"
+              label="Anno acquisto"
               type="number"
               value={yearPurchase}
               onChange={(e) => {

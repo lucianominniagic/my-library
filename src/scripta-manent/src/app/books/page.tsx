@@ -384,13 +384,13 @@ function BooksPageInner() {
           </Select>
         </FormControl>
 
-        {/* Anno lettura — Select con anni dal DB (nascosto per TBR) */}
+        {/* Anno acquisto — Select con anni dal DB (nascosto per TBR) */}
         {status !== 'tbr' && (
           <FormControl size="small" sx={{ minWidth: 140 }}>
-            <InputLabel>Anno lettura</InputLabel>
+            <InputLabel>Anno acquisto</InputLabel>
             <Select
               value={selectedYear}
-              label="Anno lettura"
+              label="Anno acquisto"
               onChange={(e) => {
                 const val = e.target.value;
                 setSelectedYear(val as number | '');

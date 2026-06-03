@@ -171,7 +171,7 @@ export const bookRouter = router({
         lightQb.andWhere('book.rating >= :ratingMin', { ratingMin: input.ratingMin });
       }
 
-      // ── Filtro anno lettura ────────────────────────────────────────────────
+      // ── Filtro anno acquisto ────────────────────────────────────────────────
       if (input.yearPurchaseFrom != null) {
         lightQb.andWhere('book.year_purchase >= :yearPurchaseFrom', { yearPurchaseFrom: input.yearPurchaseFrom });
       }
