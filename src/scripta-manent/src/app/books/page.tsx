@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
   Box,
@@ -43,6 +43,46 @@ function parseYear(raw: string | null): number | '' {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// sessionStorage helpers for filter persistence
+// ─────────────────────────────────────────────────────────────────────────────
+
+const FILTERS_CACHE_KEY = 'books-filters';
+
+interface BooksFiltersCache {
+  q?: string;
+  status?: 'all' | 'read' | 'tbr';
+  genre?: string[];
+  tag?: string[];
+  yearFrom?: number | '';
+}
+
+function readFiltersCache(): BooksFiltersCache {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = sessionStorage.getItem(FILTERS_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as BooksFiltersCache) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveFiltersCache(filters: BooksFiltersCache): void {
+  try {
+    sessionStorage.setItem(FILTERS_CACHE_KEY, JSON.stringify(filters));
+  } catch {
+    // Ignore errors (e.g. private browsing quota)
+  }
+}
+
+function clearFiltersCache(): void {
+  try {
+    sessionStorage.removeItem(FILTERS_CACHE_KEY);
+  } catch {
+    // Ignore
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Skeleton for loading state
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -74,20 +114,36 @@ function BooksPageInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // ── Read initial filters from URL ─────────────────────────────────────────
-  const [q, setQ] = useState(searchParams.get('q') ?? '');
-  const [debouncedQ, setDebouncedQ] = useState(searchParams.get('q') ?? '');
+  // ── Read initial filters: URL takes priority, sessionStorage as fallback ──
+  // Parse the cache once (synchronous, negligible cost) so all initialisers
+  // share the same JSON.parse result.
+  const cache = useMemo(() => readFiltersCache(), []);
+
+  const [q, setQ] = useState(
+    searchParams.get('q') ?? cache.q ?? '',
+  );
+  const [debouncedQ, setDebouncedQ] = useState(
+    searchParams.get('q') ?? cache.q ?? '',
+  );
   const [status, setStatus] = useState<'all' | 'read' | 'tbr'>(
-    (searchParams.get('status') as 'all' | 'read' | 'tbr') ?? 'all',
+    (searchParams.get('status') as 'all' | 'read' | 'tbr') ??
+      cache.status ??
+      'all',
   );
   const [selectedGenreIds, setSelectedGenreIds] = useState<string[]>(
-    searchParams.get('genre') ? searchParams.get('genre')!.split(',').filter(Boolean) : [],
+    searchParams.get('genre')
+      ? searchParams.get('genre')!.split(',').filter(Boolean)
+      : (cache.genre ?? []),
   );
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
-    searchParams.get('tag') ? searchParams.get('tag')!.split(',').filter(Boolean) : [],
+    searchParams.get('tag')
+      ? searchParams.get('tag')!.split(',').filter(Boolean)
+      : (cache.tag ?? []),
   );
   const [selectedYear, setSelectedYear] = useState<number | ''>(
-    parseYear(searchParams.get('yearFrom')),
+    searchParams.get('yearFrom') !== null
+      ? parseYear(searchParams.get('yearFrom'))
+      : (cache.yearFrom ?? ''),
   );
   const [page, setPage] = useState(Number(searchParams.get('page') ?? '1'));
 
@@ -120,6 +176,19 @@ function BooksPageInner() {
     const qs = params.toString();
     router.replace(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false });
   }, [debouncedQ, status, selectedGenreIds, selectedTagIds, selectedYear, page, router, pathname]);
+
+  // ── Persist filters to sessionStorage ─────────────────────────────────────
+  // Saved whenever any committed filter changes so navigation back to /books
+  // restores the last active search state even without URL query params.
+  useEffect(() => {
+    saveFiltersCache({
+      q: debouncedQ,
+      status,
+      genre: selectedGenreIds,
+      tag: selectedTagIds,
+      yearFrom: selectedYear,
+    });
+  }, [debouncedQ, status, selectedGenreIds, selectedTagIds, selectedYear]);
 
   // ── Genre & Tag options ────────────────────────────────────────────────────
   const { data: genreOptions = [] } = trpc.genre.list.useQuery();
@@ -212,6 +281,7 @@ function BooksPageInner() {
     setSelectedTagIds([]);
     setSelectedYear('');
     setPage(1);
+    clearFiltersCache();
   }
 
   const books = data?.data ?? [];
