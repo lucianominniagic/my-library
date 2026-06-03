@@ -205,7 +205,7 @@ function BooksPageInner() {
     tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
     yearPurchaseFrom: status !== 'tbr' && selectedYear !== '' ? selectedYear : undefined,
     yearPurchaseTo: status !== 'tbr' && selectedYear !== '' ? selectedYear : undefined,
-    sortBy: 'updatedAt',
+    sortBy: 'createdAt',
     sortDir: 'desc',
   });
 

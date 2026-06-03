@@ -13,7 +13,7 @@ export const BookFiltersSchema = z.object({
   yearPurchaseFrom: z.number().int().optional(),
   yearPurchaseTo:   z.number().int().optional(),
   status:       z.enum(['all', 'read', 'tbr']).default('all'),
-  sortBy:       z.enum(['title', 'author', 'yearPurchase', 'rating', 'createdAt', 'updatedAt']).default('updatedAt'),
+  sortBy:       z.enum(['title', 'author', 'yearPurchase', 'rating', 'createdAt', 'updatedAt']).default('createdAt'),
   sortDir:      z.enum(['asc', 'desc']).default('desc'),
 });
 
